@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: ai-ad-creator-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      # SQLite on the backend's own local disk — simplest option for a
+      # single-owner tool. Unlike some other personal projects in this
+      # account, this one DOES have real user data worth keeping (your ad
+      # generation history) — Render's free plan has no persistent disk, so
+      # that history is wiped on every redeploy/restart. Add a paid disk
+      # (or switch DATABASE_URL to a Postgres instance) if you want it to
+      # survive deploys.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OWNER_EMAIL
+        sync: false
+      - key: OWNER_PASSWORD
+        sync: false
+      # Required for ad generation — get one at console.anthropic.com. Every
+      # "Create ads" click makes one paid API call; there's no free tier for
+      # this feature.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Render's proxy defaults to port 10000 unless told otherwise — this
+      # must match the port the Dockerfile's CMD actually listens on.
+      - key: PORT
+        value: "8000"
+      # Can't be known until the frontend exists — deploy once, then fill in
+      # from the Render dashboard and redeploy.
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: web
+    name: ai-ad-creator-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: free
+    envVars:
+      # Must be set BEFORE the first real deploy if possible — next.config.js's
+      # rewrite is resolved at build time, so changing this later means
+      # redeploying (a full rebuild), not just restarting.
+      - key: BACKEND_URL
+        sync: false
+      # Deliberately no PORT override here — Next.js's standalone server
+      # already reads Render's auto-injected PORT on its own.

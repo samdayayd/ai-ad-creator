@@ -1,0 +1,46 @@
+from datetime import datetime, timezone
+
+from sqlalchemy import JSON, Column, DateTime, Integer, String, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+from app.config import DATABASE_URL
+
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+Base = declarative_base()
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+
+
+class AdGeneration(Base):
+    """One "Create ads" click, kept as history so the owner can revisit past
+    generations instead of re-spending an API call to see them again."""
+
+    __tablename__ = "ad_generations"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    product_url = Column(String, nullable=False)
+    product_title = Column(String, nullable=True)
+    product_image = Column(String, nullable=True)
+    result_json = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+
+def get_session():
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
