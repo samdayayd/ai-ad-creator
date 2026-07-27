@@ -1,6 +1,6 @@
 # AI Ad Creator ⭐⭐⭐⭐⭐
 
-Two ways in, both one click:
+Three ways in:
 
 **Text Ads** — paste a product URL, get:
 - TikTok ads (hook, script, caption, hashtags)
@@ -15,6 +15,13 @@ Two ways in, both one click:
 real MP4: an AI-written script, a spoken voiceover, your images panned and
 zoomed across (Ken Burns style) with the script as animated captions, and a
 background tone mixed in underneath.
+
+**UGC Ad** — one sentence + your product → a talking AI presenter (a D-ID
+stock actor, not your own footage) reads an AI-written script in a real
+voice (ElevenLabs), cut together with short cutaways of your product photos
+and a call-to-action card. Needs two extra paid API keys — see its own
+section below for exactly why, and for what it deliberately does *not*
+claim to do.
 
 A separate personal project, unrelated to this account's other apps —
 new repo, own codebase, own deploy.
@@ -62,13 +69,56 @@ new repo, own codebase, own deploy.
    speech to hit an exact number would sound worse than just being honest
    that the number is a target, not a guarantee.
 
-**Ad copy generation is the one part of the app that costs real money to
-run.** There's no free way to generate copy — or a video script — that
+**Ad copy generation is the one part of text/video ads that costs real money
+to run.** There's no free way to generate copy — or a video script — that
 reads like something an actual copywriter wrote; it needs a real language
 model. Every "Create ads" or "Make video ad" click makes one paid Claude
 API call, gated behind `ANTHROPIC_API_KEY`. If that key isn't set, the app
 tells you so directly instead of failing silently or faking a result.
 Voice, visuals, and video rendering are all free and local.
+
+### UGC ads
+
+1. **Script** (`backend/app/ugc_generator.py`) — one Claude call writes a
+   hook, a spoken intro, three benefit lines, and a closing line that leads
+   into the CTA, from your one-sentence brief plus the product info.
+2. **Voice** — the full script is synthesized by the ElevenLabs API
+   (`ELEVENLABS_API_KEY`) into a real neural voice, in whichever of your
+   account's voices you pick. Unlike the Ken-Burns video pipeline, there's
+   no free fallback here — this is the upgrade path for the "voice is
+   terrible" complaint `espeak-ng` earns honestly.
+3. **Presenter** — that audio is sent to the D-ID API (`D_ID_API_KEY`),
+   which animates one of *D-ID's own* pre-licensed stock presenters
+   speaking it (fetched live from `GET /clips/presenters`, never a face
+   image you'd have to source and personally clear usage rights for).
+4. **Edit** — `ffmpeg` concatenates the presenter clip with up to 2 short
+   Ken-Burns cutaways of your uploaded product photos and a text card for
+   the CTA you picked (Buy Now / Shop Today / Limited Offer / Order Today /
+   Learn More / Visit Website).
+
+**Why "presenter + product cutaways" and not a presenter that holds or uses
+your product**: no commercial API — D-ID, HeyGen, and Synthesia included —
+generates a photorealistic person physically interacting with an arbitrary
+uploaded object today. That capability doesn't exist yet at any price. What
+real UGC-ad tools do under the hood is exactly this: a talking-avatar shot
+edited together with separate product shots, the way a real ad would be
+cut. This is that, honestly, rather than a feature that doesn't exist
+marketed as if it does.
+
+**Two separate paid accounts, both distinct from `ANTHROPIC_API_KEY`:**
+- `ELEVENLABS_API_KEY` — get one at [elevenlabs.io](https://elevenlabs.io).
+- `D_ID_API_KEY` — get one at [studio.d-id.com](https://studio.d-id.com).
+
+Neither key is bundled or free — both are pay-per-use accounts you sign up
+for and fund yourself, and D-ID in particular often expects a paid plan
+(not just a free trial) before its API is usable. If either key is unset,
+the UGC Ad tab tells you so directly instead of failing silently. Both
+integrations are implemented from each provider's documented API shape but
+haven't been exercised against a live account from this repo — expect the
+first real run to need a small field-name fix or two once you plug in real
+keys, the same way the Cloud Run deploy needed a few IAM permission grants
+before it worked. That's normal for a first real integration test, not a
+sign the code is broken.
 
 ## Quickstart
 
@@ -179,6 +229,25 @@ gcloud run services update ai-ad-creator-backend \
 If `gcr.io` isn't enabled on your project, `gcloud` will print the exact
 Artifact Registry command to run instead — follow what it suggests rather
 than fighting the `gcr.io` path.
+
+**Adding UGC ads after the fact:** the two extra keys (`ELEVENLABS_API_KEY`,
+`D_ID_API_KEY`) are optional and best set separately rather than folded into
+the big `--set-env-vars` command above — a real secret typed straight into
+a command you can see is easy to accidentally paste into chat/logs/shell
+history. Use `read -s` on its own line instead, so the key is never visible:
+
+```bash
+read -s ELEVENLABS_KEY
+gcloud run services update ai-ad-creator-backend --region us-central1 --update-env-vars ELEVENLABS_API_KEY=$ELEVENLABS_KEY
+unset ELEVENLABS_KEY
+
+read -s DID_KEY
+gcloud run services update ai-ad-creator-backend --region us-central1 --update-env-vars D_ID_API_KEY=$DID_KEY
+unset DID_KEY
+```
+
+Run each `read -s` line by itself, paste the key at the blank prompt it
+leaves, then run the next line — don't edit the command itself.
 
 **Same history caveat as Render, slightly sharper:** Cloud Run containers
 have no persistent disk, and scaling to zero means a fresh container (and

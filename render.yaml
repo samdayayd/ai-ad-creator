@@ -26,6 +26,13 @@ services:
       # this feature.
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Required only for the UGC Ad tab — two separate paid accounts, get
+      # them at elevenlabs.io and studio.d-id.com. Leave both unset to skip
+      # UGC ads entirely; the tab tells you clearly if they're missing.
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: D_ID_API_KEY
+        sync: false
       # Render's proxy defaults to port 10000 unless told otherwise — this
       # must match the port the Dockerfile's CMD actually listens on.
       - key: PORT

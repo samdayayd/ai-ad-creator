@@ -1,4 +1,4 @@
-import { AdGeneration, AdSet, VideoAd, VideoGeneration } from "./types";
+import { AdGeneration, AdSet, Presenter, UGCAd, UGCGeneration, VideoAd, VideoGeneration, Voice } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -84,4 +84,41 @@ export async function fetchVideoBlobUrl(token: string | null, videoUrl: string):
   if (!res.ok) throw new ApiError(res.status, "Couldn't load the video.");
   const blob = await res.blob();
   return URL.createObjectURL(blob);
+}
+
+export function getPresenters(token: string | null): Promise<Presenter[]> {
+  return apiFetch("/api/ugc-ads/presenters", token);
+}
+
+export function getVoices(token: string | null): Promise<Voice[]> {
+  return apiFetch("/api/ugc-ads/voices", token);
+}
+
+export function createUgcAd(
+  token: string | null,
+  images: File[],
+  prompt: string,
+  productName: string,
+  productDescription: string,
+  presenterId: string,
+  presenterName: string,
+  voiceId: string,
+  voiceName: string,
+  ctaText: string
+): Promise<UGCAd> {
+  const form = new FormData();
+  images.forEach((f) => form.append("images", f));
+  form.append("prompt", prompt);
+  form.append("product_name", productName);
+  form.append("product_description", productDescription);
+  form.append("presenter_id", presenterId);
+  form.append("presenter_name", presenterName);
+  form.append("voice_id", voiceId);
+  form.append("voice_name", voiceName);
+  form.append("cta_text", ctaText);
+  return apiFetch("/api/ugc-ads/create", token, { method: "POST", body: form });
+}
+
+export function getUgcHistory(token: string | null): Promise<UGCGeneration[]> {
+  return apiFetch("/api/ugc-ads/history", token);
 }

@@ -51,6 +51,24 @@ class VideoGeneration(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class UGCGeneration(Base):
+    """One rendered UGC-style presenter ad — a D-ID talking presenter clip
+    edited together with product-photo cutaways and a CTA card. Same
+    on-disk-file-plus-metadata-row pattern as VideoGeneration."""
+
+    __tablename__ = "ugc_generations"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    product_title = Column(String, nullable=True)
+    presenter_name = Column(String, nullable=False)
+    voice_name = Column(String, nullable=False)
+    cta_text = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    script_json = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 

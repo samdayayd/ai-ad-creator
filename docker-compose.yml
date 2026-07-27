@@ -9,6 +9,8 @@ services:
       OWNER_EMAIL: ${OWNER_EMAIL:-owner@example.com}
       OWNER_PASSWORD: ${OWNER_PASSWORD:-changeme123}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      D_ID_API_KEY: ${D_ID_API_KEY:-}
       CORS_ORIGINS: http://localhost:3000
     volumes:
       - backend_data:/data

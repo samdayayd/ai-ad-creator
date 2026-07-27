@@ -85,3 +85,37 @@ class VideoGenerationOut(BaseModel):
     scenes: list[VideoSceneOut]
     video_url: str
     created_at: datetime
+
+
+class PresenterOut(BaseModel):
+    id: str
+    name: str
+    gender: str | None = None
+    thumbnail_url: str | None = None
+
+
+class VoiceOut(BaseModel):
+    id: str
+    name: str
+    preview_url: str | None = None
+
+
+class UGCScriptOut(BaseModel):
+    hook: str
+    intro: str
+    benefits: list[str]
+    cta_line: str
+
+
+class UGCAdOut(BaseModel):
+    id: int
+    product_title: str | None
+    presenter_name: str
+    voice_name: str
+    cta_text: str
+    script: UGCScriptOut
+    video_url: str
+
+
+class UGCGenerationOut(UGCAdOut):
+    created_at: datetime

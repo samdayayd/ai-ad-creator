@@ -7,8 +7,9 @@ import { AdSet } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import AdResults from "@/components/AdResults";
 import VideoAdCreator from "@/components/VideoAdCreator";
+import UGCAdCreator from "@/components/UGCAdCreator";
 
-type Tab = "text" | "video";
+type Tab = "text" | "video" | "ugc";
 
 export default function HomePage() {
   const { token, loading: authLoading } = useAuth();
@@ -66,6 +67,14 @@ export default function HomePage() {
           >
             Video Ad
           </button>
+          <button
+            onClick={() => setTab("ugc")}
+            className={`rounded-md px-4 py-2 text-sm font-semibold ${
+              tab === "ugc" ? "bg-spark-500 text-white" : "border border-ink-700 text-slate-300"
+            }`}
+          >
+            UGC Ad
+          </button>
         </div>
       </div>
 
@@ -103,6 +112,8 @@ export default function HomePage() {
       )}
 
       {tab === "video" && <VideoAdCreator />}
+
+      {tab === "ugc" && <UGCAdCreator />}
     </div>
   );
 }

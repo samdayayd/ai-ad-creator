@@ -63,3 +63,39 @@ export interface VideoGeneration extends VideoAd {
 }
 
 export const VIDEO_DURATIONS = [20, 30, 40, 50, 60] as const;
+
+export interface Presenter {
+  id: string;
+  name: string;
+  gender: string | null;
+  thumbnail_url: string | null;
+}
+
+export interface Voice {
+  id: string;
+  name: string;
+  preview_url: string | null;
+}
+
+export interface UGCScript {
+  hook: string;
+  intro: string;
+  benefits: string[];
+  cta_line: string;
+}
+
+export interface UGCAd {
+  id: number;
+  product_title: string | null;
+  presenter_name: string;
+  voice_name: string;
+  cta_text: string;
+  script: UGCScript;
+  video_url: string;
+}
+
+export interface UGCGeneration extends UGCAd {
+  created_at: string;
+}
+
+export const CTA_OPTIONS = ["Buy Now", "Shop Today", "Limited Offer", "Order Today", "Learn More", "Visit Website"] as const;

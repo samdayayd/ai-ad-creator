@@ -16,3 +16,13 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./ai_ad_creator.db")
 VIDEO_STORAGE_DIR = os.environ.get("VIDEO_STORAGE_DIR", "./generated_videos")
 ALLOWED_VIDEO_DURATIONS = (20, 30, 40, 50, 60)
 
+# UGC ad pipeline: D-ID animates one of its own pre-licensed stock presenters
+# to speak ElevenLabs-generated audio. Both are separate paid third-party
+# accounts from ANTHROPIC_API_KEY — see ugc_generator.py's module docstring
+# for why (no API sells a presenter that actually holds/uses an arbitrary
+# uploaded product, so this is a talking presenter + product-cutaway edit,
+# not literal product handling).
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
+D_ID_API_KEY = os.environ.get("D_ID_API_KEY", "")
+UGC_CTA_OPTIONS = ("Buy Now", "Shop Today", "Limited Offer", "Order Today", "Learn More", "Visit Website")
+
