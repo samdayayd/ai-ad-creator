@@ -14,6 +14,13 @@ COPY . .
 # --build-arg when a Dockerfile ARG of the same name exists.
 ARG BACKEND_URL
 ENV BACKEND_URL=$BACKEND_URL
+# NEXT_PUBLIC_ vars are inlined into the client bundle at build time (unlike
+# BACKEND_URL above, which only next.config.js's server-side rewrite reads).
+# The browser uses this to call the backend directly for slow endpoints
+# (video generation), bypassing the rewrite proxy's ~30s connection limit —
+# see lib/api.ts's comment on BACKEND_URL for why that limit exists.
+ARG NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 RUN npm run build
 
 FROM node:20-alpine AS runner

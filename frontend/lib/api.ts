@@ -10,8 +10,18 @@ export class ApiError extends Error {
   }
 }
 
+// Next.js's built-in rewrite proxy (next.config.js) can't hold a connection
+// open long enough for video generation (it drops with a socket hang up
+// around 30s, well under the 40-70s the ffmpeg pipeline actually needs), so
+// when a public backend URL is baked in at build time, the browser calls it
+// directly and skips the proxy. Falls back to the relative /api path (and
+// therefore the rewrite) when unset, which is what local Docker Compose dev
+// relies on since the browser can't reach the "backend" container hostname
+// directly.
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
 async function apiFetch<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(`${BACKEND_URL}${path}`, {
     ...init,
     cache: "no-store",
     headers: {
@@ -68,7 +78,7 @@ export function getVideoHistory(token: string | null): Promise<VideoGeneration[]
 }
 
 export async function fetchVideoBlobUrl(token: string | null, videoUrl: string): Promise<string> {
-  const res = await fetch(videoUrl, {
+  const res = await fetch(`${BACKEND_URL}${videoUrl}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw new ApiError(res.status, "Couldn't load the video.");
