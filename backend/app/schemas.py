@@ -61,3 +61,27 @@ class AdGenerationOut(BaseModel):
     product_image: str | None
     created_at: datetime
     result: AdSetOut
+
+
+class VideoSceneOut(BaseModel):
+    text: str
+    duration: float
+
+
+class VideoAdOut(BaseModel):
+    id: int
+    product_title: str | None
+    requested_duration_seconds: int
+    actual_duration_seconds: float
+    scenes: list[VideoSceneOut]
+    video_url: str
+
+
+class VideoGenerationOut(BaseModel):
+    id: int
+    product_title: str | None
+    requested_duration_seconds: int
+    actual_duration_seconds: float
+    scenes: list[VideoSceneOut]
+    video_url: str
+    created_at: datetime

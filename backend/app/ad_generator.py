@@ -4,13 +4,11 @@ generating copy that actually reads like a real ad (not a templated
 mad-lib) needs an actual language model, so this module is the one place in
 the app that costs money to run, gated behind ANTHROPIC_API_KEY."""
 
-import json
-import re
-
 import anthropic
 from fastapi import HTTPException
 
-from app.config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
+from app.config import ANTHROPIC_MODEL
+from app.llm import extract_json, get_client
 from app.scraper import ProductInfo
 
 SYSTEM_PROMPT = """You are a senior direct-response copywriter. Given a \
@@ -50,34 +48,8 @@ for higher-consideration ones).
 """
 
 
-def _client() -> anthropic.Anthropic:
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Ad generation needs an Anthropic API key. Set ANTHROPIC_API_KEY "
-                "in the backend environment (get one at console.anthropic.com) — "
-                "this is the one part of the app that costs money to run."
-            ),
-        )
-    return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
-
-def _extract_json(text: str) -> dict:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\n?|\n?```$", "", text.strip())
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="The AI's response wasn't valid JSON — try again.",
-        ) from exc
-
-
 def generate_ad_set(product: ProductInfo) -> dict:
-    client = _client()
+    client = get_client()
     user_message = (
         f"Product URL: {product.url}\n"
         f"Title: {product.title}\n"
@@ -97,4 +69,4 @@ def generate_ad_set(product: ProductInfo) -> dict:
         raise HTTPException(status_code=502, detail=f"Ad generation failed: {exc}") from exc
 
     text = "".join(block.text for block in response.content if block.type == "text")
-    return _extract_json(text)
+    return extract_json(text)

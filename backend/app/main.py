@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
 from app.db import init_db
-from app.routers import ads, auth
+from app.routers import ads, auth, video_ads
 from app.seed import seed
 
 
@@ -28,6 +28,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(ads.router)
+app.include_router(video_ads.router)
 
 
 @app.get("/health")

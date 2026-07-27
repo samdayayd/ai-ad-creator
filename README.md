@@ -1,7 +1,8 @@
 # AI Ad Creator ⭐⭐⭐⭐⭐
 
-One click. Paste a product URL. Get:
+Two ways in, both one click:
 
+**Text Ads** — paste a product URL, get:
 - TikTok ads (hook, script, caption, hashtags)
 - Facebook ads (primary text, headline, description)
 - Google Ads (8 headline variants, 3 description variants)
@@ -10,10 +11,17 @@ One click. Paste a product URL. Get:
 - A persuasive product description
 - An email campaign (subject, preview text, body)
 
+**Video Ad** — upload product photos, pick a length (20/30/40/50/60s), get a
+real MP4: an AI-written script, a spoken voiceover, your images panned and
+zoomed across (Ken Burns style) with the script as animated captions, and a
+background tone mixed in underneath.
+
 A separate personal project, unrelated to this account's other apps —
 new repo, own codebase, own deploy.
 
 ## How it actually works
+
+### Text ads
 
 1. **Scrape** (`backend/app/scraper.py`) — fetches the product page and pulls
    title/description/price/image from its Open Graph / Twitter Card meta
@@ -24,12 +32,43 @@ new repo, own codebase, own deploy.
    as a single JSON object, so every channel stays grounded in the same real
    product facts instead of each one inventing its own details.
 
-**This is the one part of the app that costs real money to run.** There's
-no free way to generate copy that reads like an actual ad instead of a
-templated mad-lib — it needs a real language model. Every "Create ads"
-click is one paid Claude API call, gated behind `ANTHROPIC_API_KEY`. If
-that key isn't set, the app tells you so directly instead of failing
-silently or faking a result.
+### Video ads
+
+1. **Script** (`backend/app/video_generator.py`) — one Claude call writes a
+   scene-by-scene script sized to the requested length (~5 seconds of
+   narration per scene).
+2. **Voice** — each scene's line is voiced locally by `espeak-ng`, a free,
+   offline text-to-speech engine. Genuinely synthetic-sounding — not a
+   premium neural voice — but real automated speech at zero marginal cost.
+3. **Visuals** — `ffmpeg`'s `zoompan` filter pans/zooms across your uploaded
+   product images per scene (the "Ken Burns effect"), with the script
+   rendered as animated captions via `drawtext`.
+4. **Sound bed** — a simple ambient tone bed, procedurally generated with
+   `ffmpeg`'s `aevalsrc` (three slowly-detuning sine waves) and mixed in
+   under the voiceover at low volume. Not licensed music — there's no
+   reliable, free, legal way to source real royalty-free tracks at request
+   time — but it's real generated audio, not silence.
+5. **This is deliberately not** a photorealistic AI-video generator
+   (Runway/Luma/Sora-style tools that synthesize footage from a text
+   prompt) — those charge real money per second of output via a third-party
+   video-gen API this app doesn't integrate. This composes a video from
+   *your own* product photos instead, which is why the only paid step is
+   the same one text ads already had: one Claude call to write the script.
+   Voice, visuals, and rendering all run locally afterward, so a video costs
+   nothing beyond that one text generation.
+6. **The rendered length isn't forced to match the requested one exactly.**
+   It's however long the narration naturally takes — a "30-second" ad might
+   render at 27 or 33 seconds. Artificially stretching or speeding up
+   speech to hit an exact number would sound worse than just being honest
+   that the number is a target, not a guarantee.
+
+**Ad copy generation is the one part of the app that costs real money to
+run.** There's no free way to generate copy — or a video script — that
+reads like something an actual copywriter wrote; it needs a real language
+model. Every "Create ads" or "Make video ad" click makes one paid Claude
+API call, gated behind `ANTHROPIC_API_KEY`. If that key isn't set, the app
+tells you so directly instead of failing silently or faking a result.
+Voice, visuals, and video rendering are all free and local.
 
 ## Quickstart
 
@@ -41,6 +80,11 @@ docker compose up --build
 ```
 
 ### Option B — run locally without Docker
+
+Video ads need `ffmpeg` and `espeak-ng` installed as system binaries (not
+Python packages) — `apt-get install ffmpeg espeak-ng fonts-dejavu-core` on
+Debian/Ubuntu, `brew install ffmpeg espeak-ng` on macOS. Text ads don't need
+either.
 
 ```bash
 cd backend
@@ -72,10 +116,13 @@ backend, or ad generation will return a clear "no API key" error instead of
 silently doing nothing.
 
 **Note on history:** Render's free plan has no persistent disk, so the
-SQLite-backed "past generations" history (`GET /api/ads/history`) is wiped
-on every redeploy/restart. Fine for trying it out; add a paid disk (or
-point `DATABASE_URL` at a real Postgres instance) if you want that history
-to actually last.
+SQLite-backed "past generations" history (`GET /api/ads/history` and
+`GET /api/video-ads/history`) — and the rendered video files themselves,
+under `VIDEO_STORAGE_DIR` — are wiped on every redeploy/restart. Fine for
+trying it out; add a paid disk (or point `DATABASE_URL` at a real Postgres
+instance and `VIDEO_STORAGE_DIR` at persistent storage) if you want either
+to actually last. Download any video you care about right after generating
+it.
 
 ## What's real here
 
@@ -93,26 +140,40 @@ to actually last.
   (including markdown-fenced responses and the missing-API-key guard) with
   the Anthropic client mocked out so tests never spend real money, and the
   full auth + ad-creation + history API surface.
+- **Real video files, not mocked ones.** `test_video_generator.py` runs the
+  actual `ffmpeg`/`espeak-ng` pipeline end-to-end (only the Claude script
+  call is mocked, to keep tests free) and asserts on the real MP4's video
+  and audio streams. Verified manually too: uploaded a real photo through
+  the actual UI, generated a video, and confirmed the frames show correctly
+  wrapped, centered captions and the file plays with both voice and music
+  tracks present.
 
 ## What's not built (yet)
 
-- **Multi-language output.** The prompt doesn't currently ask for a target
-  language — it writes in whatever language the scraped page content is in.
-  Worth adding as an explicit parameter if you sell into non-English markets.
-- **Image generation.** Ad *copy* only for now — no auto-generated creative
-  images/video. The scraped product image is reused as-is in the UI.
-  Real image generation is its own model call (and its own cost) — a
-  reasonable next addition once the copy side is proven useful.
-- **Editing/regenerating a single section.** Right now a "Create ads" click
-  regenerates the whole set; there's no "just redo the TikTok script"
-  button yet, though the data model (one JSON blob per generation) would
-  need to change to support per-section history for that.
+- **Multi-language output.** Neither prompt currently asks for a target
+  language — text ads write in whatever language the scraped page is in;
+  video scripts default to English narration. Worth adding as an explicit
+  parameter if you sell into non-English markets.
+- **AI-generated images/footage.** Text ads reuse the scraped product image
+  as-is; video ads reuse your uploaded photos with pans/zooms, not
+  AI-synthesized visuals. Real image/video generation is a different (and
+  much more expensive) kind of model call — see the video-ads section above
+  for why that's a deliberate scope line, not an oversight.
+- **Premium voiceover.** The video pipeline's TTS is `espeak-ng` — free,
+  local, and audibly synthetic. Swapping in a paid neural TTS provider
+  (ElevenLabs, OpenAI TTS) would sound much better at the cost of a second
+  paid API per video, on top of the Claude script call.
+- **Editing/regenerating a single section.** Right now a "Create ads" or
+  "Make video ad" click regenerates the whole thing; there's no "just redo
+  the TikTok script" or "just redo scene 3" button yet.
 
 ## Responsible use
 
 Scraped product info is only as accurate as the page's own meta tags — the
 model is instructed not to invent claims, prices, or guarantees beyond what
-was scraped, but always read the generated copy before publishing it.
-Nothing here checks ad-platform policy compliance (TikTok/Facebook/Google
-each have their own content rules) — that's still on you before you spend
-real ad budget on it.
+was given (scraped page info for text ads, your typed name/description for
+video ads), but always read/watch the generated result before publishing
+it. Nothing here checks ad-platform policy compliance (TikTok/Facebook/
+Google each have their own content and disclosure rules, including around
+synthetic voices in some jurisdictions) — that's still on you before you
+spend real ad budget on it.

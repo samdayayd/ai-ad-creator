@@ -43,3 +43,23 @@ export interface AdGeneration {
   created_at: string;
   result: AdSet;
 }
+
+export interface VideoScene {
+  text: string;
+  duration: number;
+}
+
+export interface VideoAd {
+  id: number;
+  product_title: string | null;
+  requested_duration_seconds: number;
+  actual_duration_seconds: number;
+  scenes: VideoScene[];
+  video_url: string;
+}
+
+export interface VideoGeneration extends VideoAd {
+  created_at: string;
+}
+
+export const VIDEO_DURATIONS = [20, 30, 40, 50, 60] as const;

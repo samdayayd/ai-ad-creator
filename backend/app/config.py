@@ -12,3 +12,7 @@ ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./ai_ad_creator.db")
+
+VIDEO_STORAGE_DIR = os.environ.get("VIDEO_STORAGE_DIR", "./generated_videos")
+ALLOWED_VIDEO_DURATIONS = (20, 30, 40, 50, 60)
+

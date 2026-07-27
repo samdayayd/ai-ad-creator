@@ -1,4 +1,4 @@
-import { AdGeneration, AdSet } from "./types";
+import { AdGeneration, AdSet, VideoAd, VideoGeneration } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -46,4 +46,32 @@ export function createAds(token: string | null, url: string): Promise<AdSet> {
 
 export function getAdHistory(token: string | null): Promise<AdGeneration[]> {
   return apiFetch("/api/ads/history", token);
+}
+
+export function createVideoAd(
+  token: string | null,
+  images: File[],
+  productName: string,
+  productDescription: string,
+  durationSeconds: number
+): Promise<VideoAd> {
+  const form = new FormData();
+  images.forEach((f) => form.append("images", f));
+  form.append("product_name", productName);
+  form.append("product_description", productDescription);
+  form.append("duration_seconds", String(durationSeconds));
+  return apiFetch("/api/video-ads/create", token, { method: "POST", body: form });
+}
+
+export function getVideoHistory(token: string | null): Promise<VideoGeneration[]> {
+  return apiFetch("/api/video-ads/history", token);
+}
+
+export async function fetchVideoBlobUrl(token: string | null, videoUrl: string): Promise<string> {
+  const res = await fetch(videoUrl, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, "Couldn't load the video.");
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }

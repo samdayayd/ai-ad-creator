@@ -34,6 +34,23 @@ class AdGeneration(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class VideoGeneration(Base):
+    """One rendered video ad. The file itself lives on disk (VIDEO_STORAGE_DIR)
+    — this row is just enough metadata to list/stream it back without
+    re-rendering."""
+
+    __tablename__ = "video_generations"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    product_title = Column(String, nullable=True)
+    requested_duration_seconds = Column(Integer, nullable=False)
+    actual_duration_seconds = Column(Integer, nullable=False)
+    file_path = Column(String, nullable=False)
+    scenes_json = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 

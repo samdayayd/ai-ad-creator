@@ -9,10 +9,12 @@ services:
       # SQLite on the backend's own local disk — simplest option for a
       # single-owner tool. Unlike some other personal projects in this
       # account, this one DOES have real user data worth keeping (your ad
-      # generation history) — Render's free plan has no persistent disk, so
-      # that history is wiped on every redeploy/restart. Add a paid disk
-      # (or switch DATABASE_URL to a Postgres instance) if you want it to
-      # survive deploys.
+      # generation history, and the rendered video files under
+      # VIDEO_STORAGE_DIR) — Render's free plan has no persistent disk, so
+      # both are wiped on every redeploy/restart. Add a paid disk (or switch
+      # DATABASE_URL to Postgres and VIDEO_STORAGE_DIR to some other
+      # persistent store) if you want them to survive deploys. Download any
+      # video you care about right after generating it.
       - key: JWT_SECRET
         generateValue: true
       - key: OWNER_EMAIL
