@@ -124,6 +124,72 @@ instance and `VIDEO_STORAGE_DIR` at persistent storage) if you want either
 to actually last. Download any video you care about right after generating
 it.
 
+### Option D — Deploy to Google Cloud Run (free)
+
+Google Cloud Run's free tier is a genuine standing allowance, not a
+time-limited trial credit — it renews monthly, and since Cloud Run scales
+to zero, a personal tool with occasional use shouldn't come close to it
+(check [cloud.google.com/run/pricing](https://cloud.google.com/run/pricing)
+for the current exact numbers, since free-tier terms do shift over time).
+You'll still need a Google account with a card on file — that's Google
+verifying you're not a bot, not a hidden charge; you stay at $0 as long as
+you're under the free quota.
+
+Everything below runs in **Cloud Shell** (the terminal icon in the Google
+Cloud Console) — no local installs, `gcloud` is already there.
+
+```bash
+gcloud config set project YOUR_PROJECT_ID
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com
+
+git clone https://github.com/samdayayd/ai-ad-creator.git
+cd ai-ad-creator
+
+# 1. Backend — gcloud builds the Dockerfile and deploys in one step.
+#    --memory 1Gi gives ffmpeg's video encoding enough headroom.
+gcloud run deploy ai-ad-creator-backend \
+  --source ./backend \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --memory 1Gi \
+  --set-env-vars OWNER_EMAIL=you@example.com,OWNER_PASSWORD=CHANGE_ME,JWT_SECRET=$(openssl rand -hex 32),ANTHROPIC_API_KEY=sk-ant-...,CORS_ORIGINS=*
+
+# Copy the URL gcloud prints for the backend (ends in .run.app) — you need
+# it for the next step.
+
+# 2. Frontend — same build-time-BACKEND_URL requirement as Render (see
+#    frontend/cloudbuild.yaml's comment), so this is a build + deploy in
+#    two commands instead of Cloud Run's one-line --source shortcut.
+gcloud builds submit ./frontend \
+  --config ./frontend/cloudbuild.yaml \
+  --substitutions=_BACKEND_URL=PASTE_BACKEND_URL_HERE,_IMAGE=gcr.io/YOUR_PROJECT_ID/ai-ad-creator-frontend
+
+gcloud run deploy ai-ad-creator-frontend \
+  --image gcr.io/YOUR_PROJECT_ID/ai-ad-creator-frontend \
+  --region us-central1 \
+  --allow-unauthenticated
+
+# 3. Now that the frontend has a URL too, lock CORS down to just it
+#    instead of leaving it wide open.
+gcloud run services update ai-ad-creator-backend \
+  --region us-central1 \
+  --update-env-vars CORS_ORIGINS=PASTE_FRONTEND_URL_HERE
+```
+
+If `gcr.io` isn't enabled on your project, `gcloud` will print the exact
+Artifact Registry command to run instead — follow what it suggests rather
+than fighting the `gcr.io` path.
+
+**Same history caveat as Render, slightly sharper:** Cloud Run containers
+have no persistent disk, and scaling to zero means a fresh container (and
+therefore a freshly re-seeded, empty SQLite database) on the next request
+after any idle period — not just on redeploys. The owner login always
+comes back (the app reseeds it automatically on startup), but ad/video
+history won't survive an idle-then-cold-start cycle. Fine for a tool you
+use in occasional sessions; if you want history to actually persist, this
+is the point where a real database (Cloud SQL) or object storage (Cloud
+Storage bucket for `VIDEO_STORAGE_DIR`) stops being optional.
+
 ## What's real here
 
 - **Real scraping**, not a mock — Open Graph meta tags, verified against a

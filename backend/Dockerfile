@@ -15,5 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
+# Cloud Run injects its own PORT (usually 8080) and expects the container to
+# listen on it — shell-form CMD so $PORT actually expands; 8000 is only the
+# fallback for docker-compose/local runs where PORT isn't set.
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

@@ -1,0 +1,20 @@
+# Only needed for the frontend: Cloud Run's `gcloud run deploy --source`
+# doesn't expose a plain --build-arg flag, and next.config.js's rewrite needs
+# BACKEND_URL baked in at build time (see the Dockerfile's comment on this).
+# Cloud Build substitutions are the way to get a build-arg through.
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - build
+      - "--build-arg"
+      - "BACKEND_URL=${_BACKEND_URL}"
+      - "-t"
+      - "${_IMAGE}"
+      - "."
+images:
+  - "${_IMAGE}"
+substitutions:
+  _BACKEND_URL: "" # set via --substitutions on the gcloud builds submit call
+  _IMAGE: "" # e.g. gcr.io/YOUR_PROJECT_ID/ai-ad-creator-frontend
+options:
+  substitution_option: ALLOW_LOOSE
