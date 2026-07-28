@@ -26,3 +26,22 @@ ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 D_ID_API_KEY = os.environ.get("D_ID_API_KEY", "")
 UGC_CTA_OPTIONS = ("Buy Now", "Shop Today", "Limited Offer", "Order Today", "Learn More", "Visit Website")
 
+# Subscriptions. "free" is a lifetime cap (never resets) since it exists to
+# let someone try the product, not as a recurring allowance; "pro"/"max" are
+# monthly quotas that reset on each paid billing cycle. Video ad and UGC ad
+# renders both count against the same quota — text ads don't, and remain
+# available to any signed-in account (see README for why that's a
+# deliberate, flagged tradeoff rather than an oversight). Numbers are
+# plain config, not load-bearing — revisit once real D-ID/ElevenLabs
+# per-video costs are known from actual usage.
+PLAN_LIMITS = {"free": 5, "pro": 20, "max": 60}
+PLAN_PRICE_SEK = {"free": 0, "pro": 199, "max": 499}
+OWNER_PLAN = "owner"  # the seeded OWNER_EMAIL account — unlimited, not a paid plan
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_ID_PRO = os.environ.get("STRIPE_PRICE_ID_PRO", "")
+STRIPE_PRICE_ID_MAX = os.environ.get("STRIPE_PRICE_ID_MAX", "")
+

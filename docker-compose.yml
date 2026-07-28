@@ -11,6 +11,11 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       D_ID_API_KEY: ${D_ID_API_KEY:-}
+      FRONTEND_URL: http://localhost:3000
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
+      STRIPE_PRICE_ID_MAX: ${STRIPE_PRICE_ID_MAX:-}
       CORS_ORIGINS: http://localhost:3000
     volumes:
       - backend_data:/data

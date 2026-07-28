@@ -1,8 +1,17 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import { ApiError, createUgcAd, fetchVideoBlobUrl, getPresenters, getUgcHistory, getVoices } from "@/lib/api";
-import { CTA_OPTIONS, Presenter, UGCAd, UGCGeneration, Voice } from "@/lib/types";
+import Link from "next/link";
+import {
+  ApiError,
+  createUgcAd,
+  createUgcScript,
+  fetchVideoBlobUrl,
+  getPresenters,
+  getUgcHistory,
+  getVoices,
+} from "@/lib/api";
+import { CTA_OPTIONS, Presenter, UGCAd, UGCGeneration, UGCScript, Voice } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import HistoryList from "./HistoryList";
 
@@ -20,8 +29,11 @@ export default function UGCAdCreator() {
   const [presenterId, setPresenterId] = useState("");
   const [voiceId, setVoiceId] = useState("");
   const [cta, setCta] = useState<string>(CTA_OPTIONS[0]);
+  const [script, setScript] = useState<UGCScript | null>(null);
+  const [writingScript, setWritingScript] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [ugcAd, setUgcAd] = useState<UGCAd | null>(null);
   const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null);
   const [history, setHistory] = useState<UGCGeneration[]>([]);
@@ -52,6 +64,11 @@ export default function UGCAdCreator() {
     setImages(e.target.files ? Array.from(e.target.files) : []);
   };
 
+  // A script written for a different brief/product would be stale — clear
+  // it so the user writes a fresh one instead of rendering something that
+  // no longer matches what they typed.
+  const invalidateScript = () => setScript(null);
+
   const showVideo = async (result: UGCAd) => {
     setUgcAd(result);
     const blobUrl = await fetchVideoBlobUrl(token, result.video_url);
@@ -61,9 +78,44 @@ export default function UGCAdCreator() {
     });
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleWriteScript = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    setQuotaExceeded(false);
+    if (!prompt.trim() || !productName.trim()) {
+      setError("Fill in the brief and product name first.");
+      return;
+    }
+    setWritingScript(true);
+    try {
+      const result = await createUgcScript(token, prompt, productName, productDescription);
+      setScript(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Something went wrong.");
+    } finally {
+      setWritingScript(false);
+    }
+  };
+
+  const updateScript = (field: keyof UGCScript, value: string, benefitIndex?: number) => {
+    setScript((prev) => {
+      if (!prev) return prev;
+      if (field === "benefits" && benefitIndex !== undefined) {
+        const benefits = prev.benefits.map((b, i) => (i === benefitIndex ? value : b));
+        return { ...prev, benefits };
+      }
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const handleRender = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setQuotaExceeded(false);
+    if (!presenterId || !voiceId) {
+      setError("Choose a presenter and voice first.");
+      return;
+    }
     setUgcAd(null);
     if (videoBlobUrl) URL.revokeObjectURL(videoBlobUrl);
     setVideoBlobUrl(null);
@@ -81,13 +133,15 @@ export default function UGCAdCreator() {
         presenter?.name || "Presenter",
         voiceId,
         voice?.name || "Voice",
-        cta
+        cta,
+        script ?? undefined
       );
       await showVideo(result);
       getUgcHistory(token)
         .then(setHistory)
         .catch(() => {});
     } catch (err) {
+      if (err instanceof ApiError && err.status === 402) setQuotaExceeded(true);
       setError(err instanceof ApiError ? err.detail : "Something went wrong.");
     } finally {
       setGenerating(false);
@@ -127,19 +181,22 @@ export default function UGCAdCreator() {
       <div className="rounded-xl border border-ink-700 bg-gradient-to-br from-ink-900 to-ink-800 p-6">
         <h2 className="text-lg font-bold text-white">Make a UGC ad</h2>
         <p className="mt-1 text-sm text-slate-400">
-          One sentence + your product → a talking AI presenter reads an AI-written script, cut together with your
-          product photos and a call-to-action card. See the presenter as a talking-avatar shot edited alongside your
-          product, not literally holding it — no API generates that yet.
+          One sentence + your product → an editable AI-written script → a talking AI presenter reads it, cut
+          together with your product photos and a call-to-action card. See the presenter as a talking-avatar shot
+          edited alongside your product, not literally holding it — no API generates that yet.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+        <form onSubmit={script ? handleRender : handleWriteScript} className="mt-4 space-y-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-400">One-line brief</label>
             <input
               type="text"
               required
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => {
+                setPrompt(e.target.value);
+                invalidateScript();
+              }}
               placeholder="Create a friendly ad for my wireless earbuds aimed at students."
               className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
             />
@@ -163,7 +220,10 @@ export default function UGCAdCreator() {
               type="text"
               required
               value={productName}
-              onChange={(e) => setProductName(e.target.value)}
+              onChange={(e) => {
+                setProductName(e.target.value);
+                invalidateScript();
+              }}
               placeholder="Wireless Earbuds"
               className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
             />
@@ -173,7 +233,10 @@ export default function UGCAdCreator() {
             <label className="mb-1 block text-xs font-medium text-slate-400">Description (optional)</label>
             <textarea
               value={productDescription}
-              onChange={(e) => setProductDescription(e.target.value)}
+              onChange={(e) => {
+                setProductDescription(e.target.value);
+                invalidateScript();
+              }}
               rows={2}
               placeholder="30-hour battery, crystal-clear calls."
               className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
@@ -233,16 +296,87 @@ export default function UGCAdCreator() {
             </div>
           </div>
 
+          {script && (
+            <div className="space-y-2 rounded-lg border border-ink-700 bg-ink-900 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Script — edit before rendering
+                </p>
+                <button
+                  type="button"
+                  onClick={handleWriteScript}
+                  disabled={writingScript}
+                  className="text-xs text-spark-400 hover:underline disabled:opacity-60"
+                >
+                  {writingScript ? "Rewriting…" : "Regenerate"}
+                </button>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">Hook</label>
+                <textarea
+                  value={script.hook}
+                  onChange={(e) => updateScript("hook", e.target.value)}
+                  rows={1}
+                  className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">Intro</label>
+                <textarea
+                  value={script.intro}
+                  onChange={(e) => updateScript("intro", e.target.value)}
+                  rows={2}
+                  className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
+                />
+              </div>
+              {script.benefits.map((b, i) => (
+                <div key={i}>
+                  <label className="mb-1 block text-xs text-slate-500">Benefit {i + 1}</label>
+                  <textarea
+                    value={b}
+                    onChange={(e) => updateScript("benefits", e.target.value, i)}
+                    rows={1}
+                    className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">Closing line</label>
+                <textarea
+                  value={script.cta_line}
+                  onChange={(e) => updateScript("cta_line", e.target.value)}
+                  rows={1}
+                  className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
+                />
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={generating || !presenterId || !voiceId}
+            disabled={writingScript || generating || !presenterId || !voiceId}
             className="w-full rounded-md bg-spark-500 px-4 py-2 text-sm font-bold text-white hover:bg-spark-400 disabled:opacity-60"
           >
-            {generating ? "Generating… this can take a minute" : "Make UGC ad"}
+            {script
+              ? generating
+                ? "Generating… this can take a minute"
+                : "Make UGC ad"
+              : writingScript
+              ? "Writing script…"
+              : "Write script"}
           </button>
         </form>
 
-        {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
+        {error && (
+          <div className="mt-3 text-sm text-rose-400">
+            <p>{error}</p>
+            {quotaExceeded && (
+              <Link href="/pricing" className="mt-1 inline-block underline">
+                See plans →
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {ugcAd && videoBlobUrl && (

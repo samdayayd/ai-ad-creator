@@ -13,19 +13,21 @@ from fastapi.testclient import TestClient
 
 from app.db import Base, engine
 from app.main import app
-from app.routers.auth import _failed_attempts
+from app.routers.auth import _failed_attempts, _signup_attempts
 
 
 @pytest.fixture(autouse=True)
 def _reset_login_rate_limit():
-    # The login rate limiter's failed-attempt counts live in module-level
-    # state, not the DB — without this, one test's failed-login attempts
-    # would bleed into the next test's count (TestClient requests all share
-    # the same "testclient" IP), risking a flaky lockout unrelated to what
-    # that later test is actually checking.
+    # The login/signup rate limiters' attempt counts live in module-level
+    # state, not the DB — without this, one test's failed attempts would
+    # bleed into the next test's count (TestClient requests all share the
+    # same "testclient" IP), risking a flaky lockout unrelated to what that
+    # later test is actually checking.
     _failed_attempts.clear()
+    _signup_attempts.clear()
     yield
     _failed_attempts.clear()
+    _signup_attempts.clear()
 
 
 @pytest.fixture()

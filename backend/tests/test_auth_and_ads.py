@@ -61,6 +61,58 @@ def test_login_success_clears_failure_count(client):
     assert r.status_code == 401
 
 
+def test_signup_creates_account_and_returns_token(client):
+    r = client.post("/api/auth/signup", json={"email": "new@example.com", "password": "longenough"})
+    assert r.status_code == 200, r.text
+    assert "access_token" in r.json()
+
+
+def test_signup_new_account_starts_on_free_plan(client):
+    signup = client.post("/api/auth/signup", json={"email": "new@example.com", "password": "longenough"})
+    token = signup.json()["access_token"]
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["plan"] == "free"
+    assert me.json()["videos_remaining"] == 5
+
+
+def test_signup_rejects_short_password(client):
+    r = client.post("/api/auth/signup", json={"email": "new@example.com", "password": "short"})
+    assert r.status_code == 400
+
+
+def test_signup_rejects_duplicate_email(client):
+    client.post("/api/auth/signup", json={"email": "dupe@example.com", "password": "longenough"})
+    r = client.post("/api/auth/signup", json={"email": "dupe@example.com", "password": "longenough2"})
+    assert r.status_code == 400
+
+
+def test_signup_email_is_case_insensitive_for_duplicates(client):
+    client.post("/api/auth/signup", json={"email": "Case@Example.com", "password": "longenough"})
+    r = client.post("/api/auth/signup", json={"email": "case@example.com", "password": "longenough2"})
+    assert r.status_code == 400
+
+
+def test_signup_locks_out_after_repeated_signups(client):
+    for i in range(5):
+        r = client.post("/api/auth/signup", json={"email": f"user{i}@example.com", "password": "longenough"})
+        assert r.status_code == 200
+    locked = client.post("/api/auth/signup", json={"email": "user5@example.com", "password": "longenough"})
+    assert locked.status_code == 429
+
+
+def test_owner_account_has_unlimited_plan(client, token):
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["plan"] == "owner"
+    assert me.json()["videos_remaining"] is None
+
+
+def test_me_requires_auth(client):
+    r = client.get("/api/auth/me")
+    assert r.status_code in (401, 403)
+
+
 def test_create_ads_requires_auth(client):
     r = client.post("/api/ads/create", json={"url": "https://example.com/p"})
     assert r.status_code in (401, 403)

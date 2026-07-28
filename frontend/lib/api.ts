@@ -1,5 +1,17 @@
 import { TOKEN_KEY } from "./auth";
-import { AdGeneration, AdSet, Presenter, UGCAd, UGCGeneration, VideoAd, VideoGeneration, Voice } from "./types";
+import {
+  AdGeneration,
+  AdSet,
+  Me,
+  Plan,
+  Presenter,
+  UGCAd,
+  UGCGeneration,
+  UGCScript,
+  VideoAd,
+  VideoGeneration,
+  Voice,
+} from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -56,6 +68,34 @@ export function login(email: string, password: string): Promise<{ access_token: 
   });
 }
 
+export function signup(email: string, password: string): Promise<{ access_token: string }> {
+  return apiFetch("/api/auth/signup", null, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function getMe(token: string | null): Promise<Me> {
+  return apiFetch("/api/auth/me", token);
+}
+
+export function getPlans(): Promise<Plan[]> {
+  return apiFetch("/api/billing/plans", null);
+}
+
+export function createCheckout(token: string | null, plan: string): Promise<{ checkout_url: string }> {
+  return apiFetch("/api/billing/checkout", token, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan }),
+  });
+}
+
+export function createBillingPortal(token: string | null): Promise<{ portal_url: string }> {
+  return apiFetch("/api/billing/portal", token, { method: "POST" });
+}
+
 export function createAds(token: string | null, url: string): Promise<AdSet> {
   return apiFetch("/api/ads/create", token, {
     method: "POST",
@@ -68,18 +108,33 @@ export function getAdHistory(token: string | null): Promise<AdGeneration[]> {
   return apiFetch("/api/ads/history", token);
 }
 
+export function createVideoScript(
+  token: string | null,
+  productName: string,
+  productDescription: string,
+  durationSeconds: number
+): Promise<{ scenes: string[] }> {
+  return apiFetch("/api/video-ads/script", token, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ product_name: productName, product_description: productDescription, duration_seconds: durationSeconds }),
+  });
+}
+
 export function createVideoAd(
   token: string | null,
   images: File[],
   productName: string,
   productDescription: string,
-  durationSeconds: number
+  durationSeconds: number,
+  script?: string[]
 ): Promise<VideoAd> {
   const form = new FormData();
   images.forEach((f) => form.append("images", f));
   form.append("product_name", productName);
   form.append("product_description", productDescription);
   form.append("duration_seconds", String(durationSeconds));
+  if (script) script.forEach((line) => form.append("script", line));
   return apiFetch("/api/video-ads/create", token, { method: "POST", body: form });
 }
 
@@ -104,6 +159,19 @@ export function getVoices(token: string | null): Promise<Voice[]> {
   return apiFetch("/api/ugc-ads/voices", token);
 }
 
+export function createUgcScript(
+  token: string | null,
+  prompt: string,
+  productName: string,
+  productDescription: string
+): Promise<UGCScript> {
+  return apiFetch("/api/ugc-ads/script", token, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, product_name: productName, product_description: productDescription }),
+  });
+}
+
 export function createUgcAd(
   token: string | null,
   images: File[],
@@ -114,7 +182,8 @@ export function createUgcAd(
   presenterName: string,
   voiceId: string,
   voiceName: string,
-  ctaText: string
+  ctaText: string,
+  script?: UGCScript
 ): Promise<UGCAd> {
   const form = new FormData();
   images.forEach((f) => form.append("images", f));
@@ -126,6 +195,12 @@ export function createUgcAd(
   form.append("voice_id", voiceId);
   form.append("voice_name", voiceName);
   form.append("cta_text", ctaText);
+  if (script) {
+    form.append("script_hook", script.hook);
+    form.append("script_intro", script.intro);
+    script.benefits.forEach((b) => form.append("script_benefits", b));
+    form.append("script_cta_line", script.cta_line);
+  }
   return apiFetch("/api/ugc-ads/create", token, { method: "POST", body: form });
 }
 

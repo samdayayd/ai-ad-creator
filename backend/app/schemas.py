@@ -8,9 +8,40 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class MeOut(BaseModel):
+    email: str
+    plan: str
+    videos_used: int
+    videos_remaining: int | None  # None means unlimited (the owner account)
+
+
+class PlanOut(BaseModel):
+    id: str
+    name: str
+    price_sek: int
+    video_limit: int
+
+
+class CheckoutRequest(BaseModel):
+    plan: str
+
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str
+
+
+class PortalResponse(BaseModel):
+    portal_url: str
 
 
 class CreateAdsRequest(BaseModel):
@@ -63,6 +94,16 @@ class AdGenerationOut(BaseModel):
     result: AdSetOut
 
 
+class VideoScriptRequest(BaseModel):
+    product_name: str
+    product_description: str = ""
+    duration_seconds: int
+
+
+class VideoScriptOut(BaseModel):
+    scenes: list[str]
+
+
 class VideoSceneOut(BaseModel):
     text: str
     duration: float
@@ -85,6 +126,12 @@ class VideoGenerationOut(BaseModel):
     scenes: list[VideoSceneOut]
     video_url: str
     created_at: datetime
+
+
+class UGCScriptRequest(BaseModel):
+    prompt: str
+    product_name: str
+    product_description: str = ""
 
 
 class PresenterOut(BaseModel):

@@ -33,6 +33,22 @@ services:
         sync: false
       - key: D_ID_API_KEY
         sync: false
+      # Subscriptions — get these at dashboard.stripe.com. Leave all four
+      # unset to disable billing entirely (everyone stays on the free
+      # plan). See README's "Going live with real payments" section before
+      # setting these for real: it covers the persistent-database
+      # requirement and the business-registration reality Stripe itself
+      # doesn't handle for you.
+      - key: FRONTEND_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID_PRO
+        sync: false
+      - key: STRIPE_PRICE_ID_MAX
+        sync: false
       # Render's proxy defaults to port 10000 unless told otherwise — this
       # must match the port the Dockerfile's CMD actually listens on.
       - key: PORT

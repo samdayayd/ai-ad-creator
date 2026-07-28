@@ -23,6 +23,11 @@ and a call-to-action card. Needs two extra paid API keys — see its own
 section below for exactly why, and for what it deliberately does *not*
 claim to do.
 
+Free to try (5 videos, watermarked), then Pro (199 kr/month) or Max
+(499 kr/month) for more, no watermark — see [Plans & billing](#plans--billing).
+Text ads are free on every plan; only video and UGC ad renders count
+against a plan's quota.
+
 A separate personal project, unrelated to this account's other apps —
 new repo, own codebase, own deploy.
 
@@ -41,6 +46,11 @@ new repo, own codebase, own deploy.
 
 ### Video ads
 
+0. **Write, then review** — `POST /api/video-ads/script` writes the script
+   alone (no rendering, no quota spent) so you can edit any line before
+   committing to the expensive render step; `POST /api/video-ads/create`
+   accepts your edited lines and skips writing a new script when you pass
+   them. Skip this and it writes+renders in one call, same as before.
 1. **Script** (`backend/app/video_generator.py`) — one Claude call writes a
    scene-by-scene script sized to the requested length (~5 seconds of
    narration per scene).
@@ -79,6 +89,10 @@ Voice, visuals, and video rendering are all free and local.
 
 ### UGC ads
 
+0. **Write, then review** — same pattern as video ads: `POST
+   /api/ugc-ads/script` writes hook/intro/benefits/CTA-line alone, no
+   quota spent; `POST /api/ugc-ads/create` accepts your edited script_*
+   fields and skips writing a new one when you pass them.
 1. **Script** (`backend/app/ugc_generator.py`) — one Claude call writes a
    hook, a spoken intro, three benefit lines, and a closing line that leads
    into the CTA, from your one-sentence brief plus the product info.
@@ -120,6 +134,69 @@ keys, the same way the Cloud Run deploy needed a few IAM permission grants
 before it worked. That's normal for a first real integration test, not a
 sign the code is broken.
 
+## Plans & billing
+
+Anyone can sign up (`POST /api/auth/signup` — email + password, at least 8
+characters). Every account gets a plan that caps how many video/UGC ad
+renders it can create; text ads (paste-a-URL copy generation) are free and
+ungated on every plan — the tradeoff there is that any signed-in account
+can still spend a Claude API call on a text ad with no cap, which is worth
+knowing if abuse becomes a real cost, not just a theoretical one.
+
+| Plan  | Price       | Videos                | Watermark |
+|-------|-------------|------------------------|-----------|
+| Free  | 0 kr        | 5, lifetime (not/mo)   | Yes       |
+| Pro   | 199 kr/mo   | 20/month               | No        |
+| Max   | 499 kr/mo   | 60/month               | No        |
+
+The numbers live in `backend/app/config.py` (`PLAN_LIMITS`, `PLAN_PRICE_SEK`)
+— plain config, not load-bearing, change them freely. They were picked to
+stay profitable against real per-video costs (Claude + ElevenLabs + D-ID for
+UGC ads), not from any actual usage data yet — revisit once you have some.
+The app owner's own account (seeded from `OWNER_EMAIL`) is unlimited and
+never watermarked, on a separate internal `"owner"` plan nobody can buy.
+
+### Setting up Stripe
+
+1. Create a [Stripe](https://dashboard.stripe.com) account and, in **Test
+   mode** first, create two recurring monthly **Products** — "Pro" (199 kr)
+   and "Max" (499 kr) — and copy each one's **Price ID** (`price_...`).
+2. Get your test **Secret key** from the Stripe dashboard.
+3. Register a webhook endpoint in Stripe pointing at
+   `https://YOUR_BACKEND_URL/api/billing/webhook`, subscribed to at least:
+   `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.deleted`, `invoice.paid`. Copy the **Signing
+   secret** (`whsec_...`) Stripe gives you for that endpoint.
+4. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_PRO`,
+   `STRIPE_PRICE_ID_MAX`, and `FRONTEND_URL` (your real frontend URL, used
+   to build the Checkout/portal redirect links) on the backend.
+5. Test with a subscription, using
+   [Stripe's test card numbers](https://docs.stripe.com/testing) — never a
+   real card while `STRIPE_SECRET_KEY` is a test key.
+6. This integration is implemented from Stripe's documented API shapes but
+   hasn't been exercised against a live Stripe account from this repo —
+   same caveat as D-ID/ElevenLabs above: expect a small fix on the first
+   real checkout/webhook test.
+
+**Going live with real payments — two things Stripe itself won't stop you
+from skipping, but you shouldn't:**
+
+- **A persistent database.** This app defaults to SQLite on local disk,
+  which — as the deploy sections below explain — gets wiped on every
+  Render/Cloud-Run cold start or redeploy. That's an acceptable tradeoff
+  for a free personal tool's history; it is **not acceptable** once real
+  customers' accounts and Stripe subscription links live in that table. Set
+  `DATABASE_URL` to a real Postgres instance (e.g. a small Cloud SQL
+  instance, or Render's managed Postgres) before switching Stripe out of
+  test mode. `psycopg2-binary` is already in `requirements.txt` for this —
+  SQLAlchemy handles the rest via `DATABASE_URL`'s scheme.
+- **Being legally allowed to accept recurring payments.** Depending on
+  where you live, charging real subscribers may require registering as a
+  business for tax purposes (in Sweden, at minimum an *enskild firma* with
+  F-skatt) before Stripe will let you leave test mode in practice. That's
+  outside anything this codebase can set up for you — sort it out before
+  flipping `STRIPE_SECRET_KEY` from a test key to a live one.
+
 ## Quickstart
 
 ### Option A — Docker (runs locally, one command)
@@ -151,8 +228,9 @@ npm install
 npm run dev
 ```
 
-Log in with the owner credentials from `backend/.env` (defaults:
-`owner@example.com` / `changeme123` for local dev only).
+Sign up for a real account at `/signup`, or log in with the owner
+credentials from `backend/.env` (defaults: `owner@example.com` /
+`changeme123` for local dev only) for unlimited, unwatermarked access.
 
 ### Option C — Deploy to Render
 
@@ -249,6 +327,33 @@ unset DID_KEY
 Run each `read -s` line by itself, paste the key at the blank prompt it
 leaves, then run the next line — don't edit the command itself.
 
+**Adding Stripe billing after the fact**, same safe pattern — plus
+`FRONTEND_URL` and the two Price IDs, which aren't secrets and are fine in
+a normal `--update-env-vars` call:
+
+```bash
+gcloud run services update ai-ad-creator-backend \
+  --region us-central1 \
+  --update-env-vars FRONTEND_URL=PASTE_FRONTEND_URL_HERE,STRIPE_PRICE_ID_PRO=price_...,STRIPE_PRICE_ID_MAX=price_...
+
+read -s STRIPE_KEY
+gcloud run services update ai-ad-creator-backend --region us-central1 --update-env-vars STRIPE_SECRET_KEY=$STRIPE_KEY
+unset STRIPE_KEY
+
+read -s STRIPE_WHSEC
+gcloud run services update ai-ad-creator-backend --region us-central1 --update-env-vars STRIPE_WEBHOOK_SECRET=$STRIPE_WHSEC
+unset STRIPE_WHSEC
+```
+
+**Before accepting real subscriptions on Cloud Run specifically:** the
+persistent-database requirement from
+[Plans & billing](#plans--billing) applies with extra force here — see the
+history caveat right below. A cold start doesn't just clear old video
+history on Cloud Run, it clears *every account and subscription link* in
+the default SQLite setup. Set `DATABASE_URL` to a real Postgres instance
+(Cloud SQL is the natural fit alongside the rest of this stack) before
+`STRIPE_SECRET_KEY` is a live key, not a test one.
+
 **Same history caveat as Render, slightly sharper:** Cloud Run containers
 have no persistent disk, and scaling to zero means a fresh container (and
 therefore a freshly re-seeded, empty SQLite database) on the next request
@@ -267,14 +372,21 @@ Storage bucket for `VIDEO_STORAGE_DIR`) stops being optional.
 - **Real ad copy from a real model** — every field in the response
   (`AdSetOut` in `backend/app/schemas.py`) comes from one live Claude API
   call grounded in the scraped product info, not templated filler text.
-- **Single-owner auth**, same pattern as this account's other personal
-  tools: one seeded account, bcrypt-hashed password, JWT session, no public
-  signup.
+- **Real public accounts and billing.** Anyone can sign up; bcrypt-hashed
+  passwords, per-IP rate limiting on both login and signup, JWT sessions.
+  Plan/quota state (`plan`, `videos_used`, `usage_period_start`,
+  `stripe_customer_id`) lives on the `User` row and is kept in sync by a
+  real Stripe webhook, not a mocked billing stub. The app owner's own
+  account is exempt (unlimited, on a separate internal plan) — see
+  [Plans & billing](#plans--billing).
 - **A real pytest suite** (`backend/tests/`) covering the scraper against
-  both Open-Graph and plain-HTML fixtures, the ad generator's JSON parsing
-  (including markdown-fenced responses and the missing-API-key guard) with
-  the Anthropic client mocked out so tests never spend real money, and the
-  full auth + ad-creation + history API surface.
+  both Open-Graph and plain-HTML fixtures (plus SSRF-blocking tests for
+  private/metadata IPs and redirect bypasses), the ad generator's JSON
+  parsing (including markdown-fenced responses and the missing-API-key
+  guard), quota rollover/lifetime-cap logic, and the Stripe webhook
+  dispatch logic — all with the Anthropic/Stripe/D-ID/ElevenLabs clients
+  mocked out so tests never spend real money, plus the full auth +
+  ad-creation + billing + history API surface.
 - **Real video files, not mocked ones.** `test_video_generator.py` runs the
   actual `ffmpeg`/`espeak-ng` pipeline end-to-end (only the Claude script
   call is mocked, to keep tests free) and asserts on the real MP4's video
@@ -298,9 +410,14 @@ Storage bucket for `VIDEO_STORAGE_DIR`) stops being optional.
   local, and audibly synthetic. Swapping in a paid neural TTS provider
   (ElevenLabs, OpenAI TTS) would sound much better at the cost of a second
   paid API per video, on top of the Claude script call.
-- **Editing/regenerating a single section.** Right now a "Create ads" or
-  "Make video ad" click regenerates the whole thing; there's no "just redo
-  the TikTok script" or "just redo scene 3" button yet.
+- **Editing a single section, not the whole script.** Video and UGC ads now
+  let you review/edit the AI-written script before rendering (see their
+  "Write, then review" step above) — but it's edit-the-whole-thing, not
+  "just redo scene 3" or "just redo the hook." Text ads still regenerate
+  the entire ad set on every click; there's no per-channel redo yet.
+- **Usage analytics.** There's no dashboard for the app owner to see signup
+  counts, plan distribution, or churn — that data all exists in the `User`
+  table, just with no UI built on top of it yet.
 
 ## Responsible use
 

@@ -99,3 +99,18 @@ export interface UGCGeneration extends UGCAd {
 }
 
 export const CTA_OPTIONS = ["Buy Now", "Shop Today", "Limited Offer", "Order Today", "Learn More", "Visit Website"] as const;
+
+export interface Me {
+  email: string;
+  plan: string;
+  videos_used: number;
+  videos_remaining: number | null; // null means unlimited (the owner account)
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  price_sek: number;
+  video_limit: number;
+}
+

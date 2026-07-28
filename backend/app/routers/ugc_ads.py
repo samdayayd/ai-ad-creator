@@ -8,8 +8,16 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.config import UGC_CTA_OPTIONS
 from app.db import User, UGCGeneration, get_session
-from app.schemas import PresenterOut, UGCAdOut, UGCGenerationOut, UGCScriptOut, VoiceOut
-from app.ugc_generator import generate_ugc_ad, list_presenters, list_voices
+from app.quota import consume_video_quota, ensure_video_quota_available
+from app.schemas import (
+    PresenterOut,
+    UGCAdOut,
+    UGCGenerationOut,
+    UGCScriptOut,
+    UGCScriptRequest,
+    VoiceOut,
+)
+from app.ugc_generator import UGCScript, generate_ugc_ad, list_presenters, list_voices, write_ugc_script
 
 router = APIRouter(prefix="/api/ugc-ads", tags=["ugc-ads"])
 
@@ -55,6 +63,16 @@ def cta_options():
     return list(UGC_CTA_OPTIONS)
 
 
+@router.post("/script", response_model=UGCScriptOut)
+def create_ugc_script(body: UGCScriptRequest, user: User = Depends(get_current_user)):
+    """Writes the script only — no rendering, no ElevenLabs/D-ID calls, no
+    quota spent. Lets the UI show an editable draft before committing to
+    the expensive render step. Still requires login: it spends a real
+    Anthropic API call, so it can't be left open to anonymous callers."""
+    script = write_ugc_script(body.prompt, body.product_name, body.product_description)
+    return UGCScriptOut(hook=script.hook, intro=script.intro, benefits=script.benefits, cta_line=script.cta_line)
+
+
 @router.post("/create", response_model=UGCAdOut)
 async def create_ugc_ad(
     prompt: str = Form(...),
@@ -65,20 +83,33 @@ async def create_ugc_ad(
     voice_id: str = Form(...),
     voice_name: str = Form(...),
     cta_text: str = Form(...),
+    script_hook: str | None = Form(default=None),
+    script_intro: str | None = Form(default=None),
+    script_benefits: list[str] | None = Form(default=None),
+    script_cta_line: str | None = Form(default=None),
     images: list[UploadFile] = File(default=[]),
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
     """One sentence + a product + a presenter/voice/CTA choice → a real MP4:
-    Claude writes the talking script, ElevenLabs voices it, D-ID animates a
-    pre-licensed stock presenter speaking it, and ffmpeg cuts in short
-    product-photo cutaways plus a CTA card at the end. See ugc_generator.py
-    for why this is a presenter + cutaways edit and not a presenter that
-    literally holds your product — no API sells that today."""
+    Claude writes the talking script (or pass your own edited script_* fields
+    from POST .../script to skip that call), ElevenLabs voices it, D-ID
+    animates a pre-licensed stock presenter speaking it, and ffmpeg cuts in
+    short product-photo cutaways plus a CTA card at the end. See
+    ugc_generator.py for why this is a presenter + cutaways edit and not a
+    presenter that literally holds your product — no API sells that today.
+    Counts against the caller's plan quota; free-plan renders are
+    watermarked."""
     if cta_text not in UGC_CTA_OPTIONS:
         raise HTTPException(status_code=400, detail=f"cta_text must be one of: {', '.join(UGC_CTA_OPTIONS)}")
     if len(images) > MAX_IMAGES:
         raise HTTPException(status_code=400, detail=f"Upload at most {MAX_IMAGES} product images.")
+
+    script = None
+    if script_hook and script_intro and script_benefits and script_cta_line:
+        script = UGCScript(hook=script_hook, intro=script_intro, benefits=script_benefits, cta_line=script_cta_line)
+
+    ensure_video_quota_available(user, session)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         workdir = Path(tmpdir)
@@ -103,7 +134,10 @@ async def create_ugc_ad(
             cta_text=cta_text,
             product_image_paths=image_paths,
             workdir=workdir,
+            script=script,
+            watermark=(user.plan == "free"),
         )
+        consume_video_quota(user, session)
 
         script_json = {
             "hook": result.script.hook,

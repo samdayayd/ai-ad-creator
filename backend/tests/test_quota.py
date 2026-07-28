@@ -1,0 +1,97 @@
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from app import quota
+from app.db import Base, SessionLocal, User, engine
+
+
+@pytest.fixture()
+def session():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    s = SessionLocal()
+    yield s
+    s.close()
+
+
+def _make_user(session, plan="free", videos_used=0, usage_period_start=None):
+    user = User(email="u@example.com", hashed_password="x", plan=plan, videos_used=videos_used)
+    if usage_period_start:
+        user.usage_period_start = usage_period_start
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+def test_free_plan_lifetime_cap(session):
+    user = _make_user(session, plan="free", videos_used=4)
+    quota.ensure_video_quota_available(user, session)  # 5th is still allowed
+    quota.consume_video_quota(user, session)
+    assert user.videos_used == 5
+
+    with pytest.raises(Exception):
+        quota.ensure_video_quota_available(user, session)  # 6th is rejected
+
+
+def test_free_plan_never_rolls_over_even_after_a_long_time(session):
+    long_ago = datetime.now(timezone.utc) - timedelta(days=400)
+    user = _make_user(session, plan="free", videos_used=5, usage_period_start=long_ago)
+    with pytest.raises(Exception):
+        quota.ensure_video_quota_available(user, session)
+
+
+def test_pro_plan_monthly_limit(session):
+    # A real pro user always has usage_period_start set (billing.py sets it
+    # together with the plan on every checkout/renewal) — set it here too,
+    # otherwise _maybe_roll_over treats a missing period_start as "never
+    # started a period yet" and resets the counter (see the dedicated test
+    # for that fallback behavior below).
+    now = datetime.now(timezone.utc)
+    user = _make_user(session, plan="pro", videos_used=19, usage_period_start=now)
+    quota.ensure_video_quota_available(user, session)
+    quota.consume_video_quota(user, session)
+    assert user.videos_used == 20
+
+    with pytest.raises(Exception):
+        quota.ensure_video_quota_available(user, session)
+
+
+def test_pro_plan_rolls_over_after_fallback_window(session):
+    long_ago = datetime.now(timezone.utc) - timedelta(days=31)
+    user = _make_user(session, plan="pro", videos_used=20, usage_period_start=long_ago)
+    quota.ensure_video_quota_available(user, session)  # should reset, not raise
+    assert user.videos_used == 0
+
+
+def test_paid_plan_with_no_period_start_resets_rather_than_errors(session):
+    """A pro/max user should always have usage_period_start set (billing.py
+    sets it alongside every plan change), but if that invariant is ever
+    violated — a data-integrity edge case, not a normal path — failing open
+    (start a fresh period) is the safer default than either crashing or
+    treating a possibly-new paying customer as already over quota."""
+    user = _make_user(session, plan="pro", videos_used=19, usage_period_start=None)
+    quota.ensure_video_quota_available(user, session)
+    assert user.videos_used == 0
+    assert user.usage_period_start is not None
+
+
+def test_owner_plan_is_unlimited(session):
+    user = _make_user(session, plan="owner", videos_used=99999)
+    quota.ensure_video_quota_available(user, session)  # never raises
+    assert quota.remaining_videos(user) is None
+
+
+def test_remaining_videos_never_goes_negative(session):
+    user = _make_user(session, plan="free", videos_used=999)
+    assert quota.remaining_videos(user) == 0
+
+
+def test_failed_render_does_not_consume_quota(session):
+    """ensure_video_quota_available() alone (without consume_video_quota())
+    must not increment the counter — a render that fails after the check
+    but before completion shouldn't cost the user a unit."""
+    user = _make_user(session, plan="free", videos_used=0)
+    quota.ensure_video_quota_available(user, session)
+    assert user.videos_used == 0

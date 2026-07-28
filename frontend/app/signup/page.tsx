@@ -3,10 +3,12 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ApiError, login as loginRequest } from "@/lib/api";
+import { ApiError, signup as signupRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-export default function LoginPage() {
+const MIN_PASSWORD_LENGTH = 8;
+
+export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,9 +19,13 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
     setSubmitting(true);
     try {
-      const result = await loginRequest(email, password);
+      const result = await signupRequest(email, password);
       login(result.access_token);
       router.push("/");
     } catch (err) {
@@ -31,13 +37,9 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto mt-10 max-w-sm rounded-xl border border-ink-700 bg-ink-800 p-6">
-      <h1 className="text-xl font-bold text-white">Log in</h1>
+      <h1 className="text-xl font-bold text-white">Create your account</h1>
       <p className="mt-1 text-sm text-slate-400">
-        No account yet?{" "}
-        <Link href="/signup" className="text-spark-400 hover:underline">
-          Sign up
-        </Link>
-        .
+        Free plan includes 5 videos to try it, watermarked. No card required.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-3">
@@ -56,10 +58,12 @@ export default function LoginPage() {
           <input
             type="password"
             required
+            minLength={MIN_PASSWORD_LENGTH}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
           />
+          <p className="mt-1 text-xs text-slate-500">At least {MIN_PASSWORD_LENGTH} characters.</p>
         </div>
 
         {error && <p className="text-sm text-rose-400">{error}</p>}
@@ -69,9 +73,17 @@ export default function LoginPage() {
           disabled={submitting}
           className="w-full rounded-md bg-spark-500 px-4 py-2 text-sm font-bold text-white hover:bg-spark-400 disabled:opacity-60"
         >
-          {submitting ? "Logging in…" : "Log in"}
+          {submitting ? "Creating account…" : "Create account"}
         </button>
       </form>
+
+      <p className="mt-4 text-sm text-slate-400">
+        Already have an account?{" "}
+        <Link href="/login" className="text-spark-400 hover:underline">
+          Log in
+        </Link>
+        .
+      </p>
     </div>
   );
 }

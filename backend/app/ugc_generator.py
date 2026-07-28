@@ -39,7 +39,7 @@ from fastapi import HTTPException
 
 from app.config import ANTHROPIC_MODEL, D_ID_API_KEY, ELEVENLABS_API_KEY, VIDEO_STORAGE_DIR
 from app.llm import extract_json, get_client
-from app.video_generator import FONT_PATH, FPS, VIDEO_HEIGHT, VIDEO_WIDTH
+from app.video_generator import FONT_PATH, FPS, VIDEO_HEIGHT, VIDEO_WIDTH, apply_watermark
 
 D_ID_BASE_URL = "https://api.d-id.com"
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
@@ -309,8 +309,11 @@ def generate_ugc_ad(
     cta_text: str,
     product_image_paths: list[Path],
     workdir: Path,
+    script: UGCScript | None = None,
+    watermark: bool = False,
 ) -> UGCAdResult:
-    script = write_ugc_script(prompt, product_name, product_description)
+    if script is None:
+        script = write_ugc_script(prompt, product_name, product_description)
     audio_bytes = synthesize_voice(script.full_text(), voice_id)
     audio_url = _upload_audio_to_did(audio_bytes)
     clip_id = _create_talk_clip(presenter_id, audio_url)
@@ -344,9 +347,15 @@ def generate_ugc_ad(
         ]
     )
 
+    final_path = concatenated_path
+    if watermark:
+        watermarked_path = workdir / "watermarked.mp4"
+        apply_watermark(final_path, watermarked_path)
+        final_path = watermarked_path
+
     storage_dir = Path(VIDEO_STORAGE_DIR)
     storage_dir.mkdir(parents=True, exist_ok=True)
     dest_path = storage_dir / f"{uuid.uuid4().hex}.mp4"
-    concatenated_path.replace(dest_path)
+    final_path.replace(dest_path)
 
     return UGCAdResult(file_path=dest_path, script=script)

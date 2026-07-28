@@ -213,18 +213,48 @@ def mix_music(video_path: Path, music_path: Path, out_path: Path) -> None:
     )
 
 
+def apply_watermark(video_path: Path, out_path: Path) -> None:
+    """Burns a persistent "Made with AI Ad Creator" mark into free-plan
+    output — a final ffmpeg pass over the whole rendered video, bottom-right
+    corner, applied after every other rendering step so it can't be cropped
+    out by anything upstream. Paid plans skip this entirely."""
+    vf = (
+        "drawtext=fontfile=" + FONT_PATH + ":text='Made with AI Ad Creator':"
+        "fontcolor=white@0.85:fontsize=28:box=1:boxcolor=black@0.4:boxborderw=10:"
+        "x=w-text_w-24:y=h-text_h-24"
+    )
+    _run(
+        [
+            "ffmpeg", "-y",
+            "-i", str(video_path),
+            "-vf", vf,
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy",
+            str(out_path),
+            "-loglevel", "error",
+        ]
+    )
+
+
+def scene_count_for_duration(duration_seconds: int) -> int:
+    return max(3, round(duration_seconds / SECONDS_PER_SCENE))
+
+
 def generate_video_ad(
     product_title: str,
     product_description: str,
     duration_seconds: int,
     image_paths: list[Path],
     workdir: Path,
+    script_lines: list[str] | None = None,
+    watermark: bool = False,
 ) -> VideoAdResult:
     if not image_paths:
         raise HTTPException(status_code=400, detail="At least one product image is required.")
 
-    scene_count = max(3, round(duration_seconds / SECONDS_PER_SCENE))
-    script_lines = write_video_script(product_title, product_description, scene_count)
+    if script_lines is None:
+        script_lines = write_video_script(product_title, product_description, scene_count_for_duration(duration_seconds))
+    elif not script_lines:
+        raise HTTPException(status_code=400, detail="The script can't be empty.")
 
     scenes: list[VideoScene] = []
     scene_video_paths: list[Path] = []
@@ -249,6 +279,11 @@ def generate_video_ad(
 
     final_path = workdir / "final.mp4"
     mix_music(concatenated_path, music_path, final_path)
+
+    if watermark:
+        watermarked_path = workdir / "watermarked.mp4"
+        apply_watermark(final_path, watermarked_path)
+        final_path = watermarked_path
 
     storage_dir = Path(VIDEO_STORAGE_DIR)
     storage_dir.mkdir(parents=True, exist_ok=True)
