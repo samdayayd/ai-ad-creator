@@ -121,6 +121,9 @@ function PricingContent() {
                 {plan.video_limit} video{plan.video_limit === 1 ? "" : "s"}{" "}
                 {plan.id === "free" ? t("pricing.total") : t("pricing.perMonthSuffix")}
               </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {t("pricing.ugcNote").replace("{n}", String(plan.ugc_video_limit))}
+              </p>
 
               <button
                 onClick={() => handleChoosePlan(plan.id)}

@@ -26,8 +26,12 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-10 border-b border-white/10 bg-ink-950/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-4">
-        <Link href="/" className="font-display text-lg font-bold tracking-wide text-white">
-          Ad<span className="glow-text">Storm</span> <span className="text-sm font-normal text-slate-400">Studio</span>
+        <Link href="/" className="flex items-center gap-2.5 font-display text-lg font-bold tracking-wide text-white">
+          <span className="hex-badge h-8 w-8 font-display text-xs font-bold text-volt-300">AS</span>
+          <span>
+            Ad<span className="glow-text">Storm</span> <span className="text-sm font-normal text-slate-400">Studio</span>
+          </span>
+          <span className="status-dot" aria-hidden="true" />
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/pricing" className="hidden text-sm text-slate-400 transition hover:text-volt-300 sm:inline">

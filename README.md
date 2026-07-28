@@ -143,16 +143,28 @@ ungated on every plan — the tradeoff there is that any signed-in account
 can still spend a Claude API call on a text ad with no cap, which is worth
 knowing if abuse becomes a real cost, not just a theoretical one.
 
-| Plan  | Price       | Videos                | Watermark |
-|-------|-------------|------------------------|-----------|
-| Free  | 0 kr        | 5, lifetime (not/mo)   | Yes       |
-| Pro   | 199 kr/mo   | 20/month               | No        |
-| Max   | 499 kr/mo   | 60/month               | No        |
+| Plan  | Price       | Videos (total)         | Of which, UGC ads | Watermark |
+|-------|-------------|------------------------|--------------------|-----------|
+| Free  | 0 kr        | 5, lifetime (not/mo)   | 1                  | Yes       |
+| Pro   | 199 kr/mo   | 20/month               | 5                  | No        |
+| Max   | 499 kr/mo   | 60/month               | 15                 | No        |
 
-The numbers live in `backend/app/config.py` (`PLAN_LIMITS`, `PLAN_PRICE_SEK`)
-— plain config, not load-bearing, change them freely. They were picked to
-stay profitable against real per-video costs (Claude + ElevenLabs + D-ID for
-UGC ads), not from any actual usage data yet — revisit once you have some.
+The numbers live in `backend/app/config.py` (`PLAN_LIMITS`, `PLAN_PRICE_SEK`,
+`UGC_PLAN_LIMITS`) — plain config, not load-bearing, change them freely.
+They were picked to stay profitable against real per-video costs, not from
+any actual usage data yet — revisit once you have some.
+
+**Two ceilings, not one.** UGC ads cost meaningfully more to generate than
+Ken-Burns video ads — ElevenLabs voice synthesis and D-ID's talking-presenter
+render, both on top of the same Claude script call every video already makes
+— so on top of the plan's overall video quota (`PLAN_LIMITS`), there's a
+tighter UGC-specific sub-quota (`UGC_PLAN_LIMITS`, see `backend/app/quota.py`)
+that caps how many of a plan's videos can be the expensive kind. A UGC ad
+spends one unit of both counters; a Ken-Burns video ad spends only the
+general one. Without this, a single plan's entire quota could be spent
+exclusively on the most expensive path, which is the scenario this exists to
+rule out.
+
 The app owner's own account (seeded from `OWNER_EMAIL`) is unlimited and
 never watermarked, on a separate internal `"owner"` plan nobody can buy.
 

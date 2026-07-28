@@ -81,18 +81,50 @@ def test_create_ugc_ad_watermarks_free_plan_but_not_owner(client, token, monkeyp
     assert calls == [True, False]
 
 
-def test_create_ugc_ad_blocks_free_plan_after_lifetime_limit(client, monkeypatch):
+def test_create_ugc_ad_blocks_free_plan_after_ugc_specific_limit(client, monkeypatch):
+    """Free plan allows 5 videos total but only 1 UGC ad — the tighter,
+    UGC-specific sub-cap (config.UGC_PLAN_LIMITS) should kick in first."""
     monkeypatch.setattr(ugc_ads_router, "generate_ugc_ad", _fake_generate_ugc_ad)
     free_token = _signup(client)
-    for _ in range(5):
-        r = client.post(
-            "/api/ugc-ads/create", data=_create_payload(), headers={"Authorization": f"Bearer {free_token}"}
-        )
-        assert r.status_code == 200, r.text
+    first = client.post("/api/ugc-ads/create", data=_create_payload(), headers={"Authorization": f"Bearer {free_token}"})
+    assert first.status_code == 200, first.text
     blocked = client.post(
         "/api/ugc-ads/create", data=_create_payload(), headers={"Authorization": f"Bearer {free_token}"}
     )
     assert blocked.status_code == 402
+
+
+def test_create_ugc_ad_blocked_by_general_video_quota_too(client, monkeypatch):
+    """The overall video quota is checked before the UGC-specific one — a
+    plan with its general quota exhausted should block a UGC ad even if
+    the UGC-specific sub-quota still has room left."""
+    from app.routers import video_ads as video_ads_router
+    from app.video_generator import VideoAdResult, VideoScene
+
+    def _fake_video(*args, **kwargs):
+        fd, path = tempfile.mkstemp(suffix=".mp4")
+        with open(fd, "wb"):
+            pass
+        return VideoAdResult(file_path=Path(path), actual_duration_seconds=18.5, scenes=[VideoScene(text="x", duration=5.0)])
+
+    monkeypatch.setattr(video_ads_router, "generate_video_ad", _fake_video)
+    free_token = _signup(client, email="quota-edge@example.com")
+
+    # Exhaust the free plan's overall 5-video quota with cheap Ken-Burns ads.
+    for _ in range(5):
+        r = client.post(
+            "/api/video-ads/create",
+            data={"product_name": "Widget", "duration_seconds": "20"},
+            files=[("images", ("p.jpg", io.BytesIO(b"fake"), "image/jpeg"))],
+            headers={"Authorization": f"Bearer {free_token}"},
+        )
+        assert r.status_code == 200, r.text
+
+    blocked = client.post(
+        "/api/ugc-ads/create", data=_create_payload(), headers={"Authorization": f"Bearer {free_token}"}
+    )
+    assert blocked.status_code == 402
+    assert "videos" in blocked.json()["detail"]  # the general-quota message, not the UGC-specific one
 
 
 def test_create_ugc_ad_accepts_prewritten_script_and_skips_script_generation(client, token, monkeypatch):

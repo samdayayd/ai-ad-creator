@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.config import UGC_CTA_OPTIONS
 from app.db import User, UGCGeneration, get_session
-from app.quota import consume_video_quota, ensure_video_quota_available
+from app.quota import (
+    consume_ugc_quota,
+    consume_video_quota,
+    ensure_ugc_quota_available,
+    ensure_video_quota_available,
+)
 from app.schemas import (
     PresenterOut,
     UGCAdOut,
@@ -98,8 +103,9 @@ async def create_ugc_ad(
     short product-photo cutaways plus a CTA card at the end. See
     ugc_generator.py for why this is a presenter + cutaways edit and not a
     presenter that literally holds your product — no API sells that today.
-    Counts against the caller's plan quota; free-plan renders are
-    watermarked."""
+    Counts against both the caller's overall video quota and the tighter
+    UGC-specific sub-quota (UGC ads cost more than Ken-Burns video ads to
+    generate); free-plan renders are watermarked."""
     if cta_text not in UGC_CTA_OPTIONS:
         raise HTTPException(status_code=400, detail=f"cta_text must be one of: {', '.join(UGC_CTA_OPTIONS)}")
     if len(images) > MAX_IMAGES:
@@ -110,6 +116,7 @@ async def create_ugc_ad(
         script = UGCScript(hook=script_hook, intro=script_intro, benefits=script_benefits, cta_line=script_cta_line)
 
     ensure_video_quota_available(user, session)
+    ensure_ugc_quota_available(user, session)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         workdir = Path(tmpdir)
@@ -138,6 +145,7 @@ async def create_ugc_ad(
             watermark=(user.plan == "free"),
         )
         consume_video_quota(user, session)
+        consume_ugc_quota(user, session)
 
         script_json = {
             "hook": result.script.hook,

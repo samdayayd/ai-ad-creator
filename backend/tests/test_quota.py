@@ -15,8 +15,14 @@ def session():
     s.close()
 
 
-def _make_user(session, plan="free", videos_used=0, usage_period_start=None):
-    user = User(email="u@example.com", hashed_password="x", plan=plan, videos_used=videos_used)
+def _make_user(session, plan="free", videos_used=0, ugc_videos_used=0, usage_period_start=None):
+    user = User(
+        email="u@example.com",
+        hashed_password="x",
+        plan=plan,
+        videos_used=videos_used,
+        ugc_videos_used=ugc_videos_used,
+    )
     if usage_period_start:
         user.usage_period_start = usage_period_start
     session.add(user)
@@ -95,3 +101,38 @@ def test_failed_render_does_not_consume_quota(session):
     user = _make_user(session, plan="free", videos_used=0)
     quota.ensure_video_quota_available(user, session)
     assert user.videos_used == 0
+
+
+def test_ugc_sub_quota_is_tighter_than_general_video_quota_on_free_plan(session):
+    """Free allows 5 videos total but only 1 UGC ad — the UGC-specific
+    ceiling should bind well before the general one would."""
+    user = _make_user(session, plan="free", ugc_videos_used=0)
+    quota.ensure_ugc_quota_available(user, session)  # 1st is allowed
+    quota.consume_ugc_quota(user, session)
+    quota.consume_video_quota(user, session)  # a UGC ad also spends a general video
+    assert user.ugc_videos_used == 1
+    assert user.videos_used == 1
+
+    with pytest.raises(Exception):
+        quota.ensure_ugc_quota_available(user, session)  # 2nd UGC ad rejected, well under the 5-video cap
+
+
+def test_ugc_sub_quota_rolls_over_with_the_general_quota(session):
+    now = datetime.now(timezone.utc)
+    user = _make_user(session, plan="pro", videos_used=15, ugc_videos_used=5, usage_period_start=now)
+    with pytest.raises(Exception):
+        quota.ensure_ugc_quota_available(user, session)  # pro's UGC cap is 5, already hit
+
+    long_ago = now - timedelta(days=31)
+    user.usage_period_start = long_ago
+    session.add(user)
+    session.commit()
+    quota.ensure_ugc_quota_available(user, session)  # rollover resets both counters
+    assert user.ugc_videos_used == 0
+    assert user.videos_used == 0
+
+
+def test_owner_plan_ugc_is_unlimited(session):
+    user = _make_user(session, plan="owner", ugc_videos_used=99999)
+    quota.ensure_ugc_quota_available(user, session)  # never raises
+    assert quota.remaining_ugc_videos(user) is None

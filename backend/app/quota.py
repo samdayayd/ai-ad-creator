@@ -1,33 +1,42 @@
 """Plan/quota logic shared by the video-ads and UGC-ads routers. Text ads
 aren't gated here — see README for why that's a deliberate, flagged
-tradeoff rather than an oversight."""
+tradeoff rather than an oversight.
+
+Two ceilings, not one: every plan has an overall video quota (PLAN_LIMITS)
+plus a tighter UGC-specific sub-quota (UGC_PLAN_LIMITS), since a UGC ad
+costs meaningfully more than a Ken-Burns video ad (ElevenLabs + D-ID on
+top of the Claude call every video already makes) and, left uncapped
+separately, could let a plan's entire quota be spent on the expensive
+path. A UGC ad counts against both counters; a Ken-Burns video ad counts
+against only the general one."""
 
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import OWNER_PLAN, PLAN_LIMITS
+from app.config import OWNER_PLAN, PLAN_LIMITS, UGC_PLAN_LIMITS
 from app.db import User
 
 PAID_PLANS = ("pro", "max")
 ROLLOVER_FALLBACK_DAYS = 30
 
 
-def _limit_for(plan: str) -> int | None:
+def _limit_for(plan: str, limits: dict[str, int]) -> int | None:
     """None means unlimited (the owner account)."""
     if plan == OWNER_PLAN:
         return None
-    return PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    return limits.get(plan, limits["free"])
 
 
 def _maybe_roll_over(user: User, now: datetime) -> None:
-    """Paid plans reset their counter roughly monthly; free's cap is a
-    lifetime total by design (it's a "try it" tier, not a recurring
-    allowance), so it never rolls over. The real reset trigger is the
-    Stripe webhook's invoice.paid event on each actual renewal — this is
-    only a fallback in case a webhook was ever missed, so someone's not
-    stuck locked out forever over an infra hiccup."""
+    """Paid plans reset both counters roughly monthly, together — they
+    share one billing period. Free's cap is a lifetime total by design
+    (it's a "try it" tier, not a recurring allowance), so it never rolls
+    over. The real reset trigger is the Stripe webhook's invoice.paid
+    event on each actual renewal — this is only a fallback in case a
+    webhook was ever missed, so someone's not stuck locked out forever
+    over an infra hiccup."""
     if user.plan in PAID_PLANS:
         period_start = user.usage_period_start
         # SQLite (used for local dev/tests) doesn't round-trip tzinfo through
@@ -39,15 +48,24 @@ def _maybe_roll_over(user: User, now: datetime) -> None:
             period_start = period_start.replace(tzinfo=timezone.utc)
         if not period_start or now >= period_start + timedelta(days=ROLLOVER_FALLBACK_DAYS):
             user.videos_used = 0
+            user.ugc_videos_used = 0
             user.usage_period_start = now
 
 
 def remaining_videos(user: User) -> int | None:
     """None means unlimited. Read-only — does not roll over or mutate."""
-    limit = _limit_for(user.plan)
+    limit = _limit_for(user.plan, PLAN_LIMITS)
     if limit is None:
         return None
     return max(0, limit - user.videos_used)
+
+
+def remaining_ugc_videos(user: User) -> int | None:
+    """None means unlimited. Read-only — does not roll over or mutate."""
+    limit = _limit_for(user.plan, UGC_PLAN_LIMITS)
+    if limit is None:
+        return None
+    return max(0, limit - user.ugc_videos_used)
 
 
 def ensure_video_quota_available(user: User, session: Session) -> None:
@@ -60,7 +78,7 @@ def ensure_video_quota_available(user: User, session: Session) -> None:
     session.add(user)
     session.commit()
 
-    limit = _limit_for(user.plan)
+    limit = _limit_for(user.plan, PLAN_LIMITS)
     if limit is not None and user.videos_used >= limit:
         period = "this month" if user.plan in PAID_PLANS else "in total"
         raise HTTPException(
@@ -72,9 +90,37 @@ def ensure_video_quota_available(user: User, session: Session) -> None:
         )
 
 
+def ensure_ugc_quota_available(user: User, session: Session) -> None:
+    """Call BEFORE starting a UGC render, in addition to (not instead of)
+    ensure_video_quota_available — UGC ads are subject to both ceilings."""
+    now = datetime.now(timezone.utc)
+    _maybe_roll_over(user, now)
+    session.add(user)
+    session.commit()
+
+    limit = _limit_for(user.plan, UGC_PLAN_LIMITS)
+    if limit is not None and user.ugc_videos_used >= limit:
+        period = "this month" if user.plan in PAID_PLANS else "in total"
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"You've used all {limit} UGC ads on your {user.plan} plan {period}. "
+                "Upgrade at /pricing for more, or use the Video Ad tab instead — it doesn't count against this limit."
+            ),
+        )
+
+
 def consume_video_quota(user: User, session: Session) -> None:
     """Call AFTER a render actually succeeds — a failed render shouldn't
     cost the user a unit of their plan."""
     user.videos_used += 1
+    session.add(user)
+    session.commit()
+
+
+def consume_ugc_quota(user: User, session: Session) -> None:
+    """Call AFTER a UGC render actually succeeds, alongside
+    consume_video_quota — a UGC ad spends one unit of both quotas."""
+    user.ugc_videos_used += 1
     session.add(user)
     session.commit()

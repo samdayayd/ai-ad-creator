@@ -10,10 +10,10 @@ body {
      bottom-right) — a cheap, dependency-free way to get a "digital HUD
      plane" backdrop instead of a flat color. All CSS, no images/canvas. */
   background-image:
-    radial-gradient(ellipse 80% 50% at 15% 0%, rgba(217, 70, 239, 0.12), transparent 60%),
-    radial-gradient(ellipse 80% 50% at 85% 100%, rgba(34, 211, 238, 0.1), transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    radial-gradient(ellipse 80% 50% at 15% 0%, rgba(217, 70, 239, 0.14), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 85% 100%, rgba(34, 211, 238, 0.12), transparent 60%),
+    linear-gradient(rgba(103, 232, 249, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.07) 1px, transparent 1px);
   background-size: auto, auto, 48px 48px, 48px 48px;
   background-attachment: fixed;
 }
@@ -24,22 +24,95 @@ body {
   }
 }
 
+/* A faint horizontal scanline sweep drifting down the whole page, plus a
+   fixed hairline scan-band — cheap CRT/HUD texture, all CSS. Sits above the
+   grid background but below actual content (z-index: 0 on an ancestor with
+   position: relative would trap it; fixed + pointer-events:none keeps it out
+   of the way of everything, including clicks, without needing that). */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(103, 232, 249, 0.05) 0px,
+    rgba(103, 232, 249, 0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+@keyframes scan-sweep {
+  0% {
+    transform: translateY(-120px);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body::before {
+    content: "";
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: 120px;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, rgba(34, 211, 238, 0.05), transparent);
+    animation: scan-sweep 9s linear infinite;
+  }
+}
+
 @layer components {
   .panel {
-    @apply relative rounded-xl border border-white/10 bg-ink-900/60 backdrop-blur-xl;
+    @apply relative z-10 rounded-xl border border-white/10 bg-ink-900/60 backdrop-blur-xl;
     box-shadow: 0 0 40px -20px rgba(217, 70, 239, 0.3);
   }
 
+  /* Targeting-frame corner brackets, HUD-style — two opposite L-shaped
+     ticks rather than a full border, so the eye reads "console panel"
+     instead of "rounded card." */
+  .panel::before,
+  .panel::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+  .panel::before {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid theme("colors.volt.400");
+    border-left: 2px solid theme("colors.volt.400");
+    filter: drop-shadow(0 0 3px theme("colors.volt.400"));
+  }
+  .panel::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 2px solid theme("colors.volt.400");
+    border-right: 2px solid theme("colors.volt.400");
+    filter: drop-shadow(0 0 3px theme("colors.volt.400"));
+  }
+
   .btn-primary {
-    @apply rounded-md bg-gradient-to-r from-spark-500 to-volt-500 px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+    @apply relative rounded-md bg-gradient-to-r from-spark-500 to-volt-500 px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
     box-shadow: 0 0 20px -6px rgba(217, 70, 239, 0.7);
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   }
   .btn-primary:not(:disabled):hover {
     box-shadow: 0 0 26px -4px rgba(34, 211, 238, 0.8);
   }
 
   .btn-secondary {
-    @apply rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-volt-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+    @apply border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-volt-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   }
 
   .input-field {
@@ -60,5 +133,19 @@ body {
 
   .label-tech {
     @apply mb-1 block font-display text-[0.65rem] uppercase tracking-[0.15em] text-volt-300/80;
+  }
+
+  /* Small blinking "system online" indicator dot, HUD-readout style. */
+  .status-dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full bg-volt-400;
+    box-shadow: 0 0 8px 1px rgba(34, 211, 238, 0.9);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Hexagonal accent badge — used behind small icons/marks to echo the
+     hex-plate motif in HUD/sci-fi interfaces. */
+  .hex-badge {
+    @apply relative flex items-center justify-center border border-volt-400/50 bg-volt-500/10;
+    clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
   }
 }

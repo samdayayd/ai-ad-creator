@@ -105,6 +105,8 @@ export interface Me {
   plan: string;
   videos_used: number;
   videos_remaining: number | null; // null means unlimited (the owner account)
+  ugc_videos_used: number;
+  ugc_videos_remaining: number | null; // null means unlimited (the owner account)
 }
 
 export interface Plan {
@@ -112,5 +114,6 @@ export interface Plan {
   name: string;
   price_sek: number;
   video_limit: number;
+  ugc_video_limit: number;
 }
 

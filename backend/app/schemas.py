@@ -29,6 +29,8 @@ class MeOut(BaseModel):
     plan: str
     videos_used: int
     videos_remaining: int | None  # None means unlimited (the owner account)
+    ugc_videos_used: int
+    ugc_videos_remaining: int | None  # None means unlimited (the owner account)
 
 
 class PlanOut(BaseModel):
@@ -36,6 +38,7 @@ class PlanOut(BaseModel):
     name: str
     price_sek: int
     video_limit: int
+    ugc_video_limit: int
 
 
 class CheckoutRequest(BaseModel):

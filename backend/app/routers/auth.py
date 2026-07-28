@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import create_access_token, get_current_user, hash_password, verify_password
 from app.db import User, get_session
-from app.quota import remaining_videos
+from app.quota import remaining_ugc_videos, remaining_videos
 from app.schemas import LoginRequest, LoginResponse, MeOut, SignupRequest
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -80,4 +80,11 @@ def login(body: LoginRequest, request: Request, session: Session = Depends(get_s
 
 @router.get("/me", response_model=MeOut)
 def me(user: User = Depends(get_current_user)):
-    return MeOut(email=user.email, plan=user.plan, videos_used=user.videos_used, videos_remaining=remaining_videos(user))
+    return MeOut(
+        email=user.email,
+        plan=user.plan,
+        videos_used=user.videos_used,
+        videos_remaining=remaining_videos(user),
+        ugc_videos_used=user.ugc_videos_used,
+        ugc_videos_remaining=remaining_ugc_videos(user),
+    )

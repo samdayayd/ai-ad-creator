@@ -21,6 +21,11 @@ class User(Base):
     stripe_customer_id = Column(String, nullable=True)
     stripe_subscription_id = Column(String, nullable=True)
     videos_used = Column(Integer, nullable=False, default=0)
+    # A UGC ad increments both this and videos_used — it's one of your
+    # videos AND subject to a tighter UGC-specific sub-cap, since UGC ads
+    # cost meaningfully more per generation (ElevenLabs + D-ID on top of
+    # the Claude call every video already makes). See config.UGC_PLAN_LIMITS.
+    ugc_videos_used = Column(Integer, nullable=False, default=0)
     # Only meaningful for paid plans, which reset monthly — free's cap is a
     # lifetime total, so it has no period to track. Primarily advanced by the
     # Stripe webhook's invoice.paid event on each real renewal; quota.py's

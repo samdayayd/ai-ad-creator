@@ -74,6 +74,7 @@ export const MESSAGES: Record<Locale, Dict> = {
     "pricing.opening": "Opening…",
     "pricing.free": "Free",
     "pricing.currencyNote": "Prices shown in your currency are approximate — you're billed in Swedish kronor (SEK) at checkout.",
+    "pricing.ugcNote": "Up to {n} of those can be UGC ads (the talking-presenter ones cost more to generate).",
     "contact.title": "Get in touch",
     "contact.subtitle":
       "Video not rendering right, billing question, anything else — send a message and we'll reply straight to your email.",
@@ -140,6 +141,7 @@ export const MESSAGES: Record<Locale, Dict> = {
     "pricing.opening": "Öppnar…",
     "pricing.free": "Gratis",
     "pricing.currencyNote": "Priser i annan valuta är ungefärliga — du debiteras i svenska kronor (SEK) i kassan.",
+    "pricing.ugcNote": "Upp till {n} av dem kan vara UGC-annonser (de med talande presentatör kostar mer att skapa).",
     "contact.title": "Kontakta oss",
     "contact.subtitle":
       "Video som inte fungerar, en fråga om fakturering, eller något annat — skicka ett meddelande så svarar vi direkt till din e-post.",
@@ -207,6 +209,7 @@ export const MESSAGES: Record<Locale, Dict> = {
     "pricing.free": "Gratuit",
     "pricing.currencyNote":
       "Les prix affichés dans votre devise sont approximatifs — vous serez facturé en couronnes suédoises (SEK) au paiement.",
+    "pricing.ugcNote": "Jusqu'à {n} d'entre elles peuvent être des publicités UGC (celles avec présentateur parlant coûtent plus cher à générer).",
     "contact.title": "Contactez-nous",
     "contact.subtitle":
       "Vidéo qui ne se génère pas correctement, question de facturation, ou autre — envoyez un message et nous répondrons directement à votre e-mail.",
@@ -274,6 +277,7 @@ export const MESSAGES: Record<Locale, Dict> = {
     "pricing.free": "Gratis",
     "pricing.currencyNote":
       "Los precios en tu moneda son aproximados — se te cobrará en coronas suecas (SEK) al pagar.",
+    "pricing.ugcNote": "Hasta {n} de ellos pueden ser anuncios UGC (los de presentador hablando cuestan más generar).",
     "contact.title": "Ponte en contacto",
     "contact.subtitle":
       "Un vídeo que no se genera bien, una pregunta de facturación, cualquier cosa — envía un mensaje y responderemos directamente a tu correo.",
@@ -341,6 +345,7 @@ export const MESSAGES: Record<Locale, Dict> = {
     "pricing.free": "Kostenlos",
     "pricing.currencyNote":
       "Preise in deiner Währung sind ungefähre Angaben — abgerechnet wird in schwedischen Kronen (SEK) beim Checkout.",
+    "pricing.ugcNote": "Bis zu {n} davon können UGC-Anzeigen sein (die mit sprechendem Presenter kosten mehr in der Erstellung).",
     "contact.title": "Kontaktiere uns",
     "contact.subtitle":
       "Video wird nicht richtig gerendert, eine Frage zur Abrechnung, oder etwas anderes — schick uns eine Nachricht und wir antworten direkt an deine E-Mail.",
@@ -408,6 +413,7 @@ export const MESSAGES: Record<Locale, Dict> = {
     "pricing.free": "Grátis",
     "pricing.currencyNote":
       "Os preços na sua moeda são aproximados — você será cobrado em coroas suecas (SEK) no checkout.",
+    "pricing.ugcNote": "Até {n} deles podem ser anúncios UGC (os de apresentador falando custam mais para gerar).",
     "contact.title": "Fale conosco",
     "contact.subtitle":
       "Vídeo não está gerando corretamente, dúvida sobre cobrança, ou qualquer outra coisa — envie uma mensagem e responderemos direto no seu e-mail.",
@@ -473,6 +479,7 @@ export const MESSAGES: Record<Locale, Dict> = {
     "pricing.opening": "جارٍ الفتح…",
     "pricing.free": "مجاني",
     "pricing.currencyNote": "الأسعار المعروضة بعملتك تقريبية — سيتم خصم المبلغ فعليًا بالكرونة السويدية (SEK) عند الدفع.",
+    "pricing.ugcNote": "يمكن أن يكون حتى {n} منها إعلانات UGC (الإعلانات ذات المقدم الناطق أغلى في الإنشاء).",
     "contact.title": "تواصل معنا",
     "contact.subtitle": "فيديو لا يعمل بشكل صحيح، سؤال حول الفوترة، أو أي شيء آخر — أرسل رسالة وسنرد مباشرة على بريدك الإلكتروني.",
     "contact.name": "الاسم",

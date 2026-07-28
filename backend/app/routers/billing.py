@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.billing import create_checkout_session, create_portal_session, handle_webhook_event
-from app.config import PLAN_LIMITS, PLAN_PRICE_SEK
+from app.config import PLAN_LIMITS, PLAN_PRICE_SEK, UGC_PLAN_LIMITS
 from app.db import User, get_session
 from app.schemas import CheckoutRequest, CheckoutResponse, PlanOut, PortalResponse
 
@@ -17,7 +17,13 @@ def plans():
     pro/max) — the owner account's unlimited access lives outside it
     entirely (see config.OWNER_PLAN), so there's nothing to filter out here."""
     return [
-        PlanOut(id=plan_id, name=plan_id.capitalize(), price_sek=PLAN_PRICE_SEK[plan_id], video_limit=limit)
+        PlanOut(
+            id=plan_id,
+            name=plan_id.capitalize(),
+            price_sek=PLAN_PRICE_SEK[plan_id],
+            video_limit=limit,
+            ugc_video_limit=UGC_PLAN_LIMITS[plan_id],
+        )
         for plan_id, limit in PLAN_LIMITS.items()
     ]
 
