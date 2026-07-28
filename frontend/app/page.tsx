@@ -2,10 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, createAds } from "@/lib/api";
+import { ApiError, createAds, getAdHistory } from "@/lib/api";
 import { AdSet } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import AdResults from "@/components/AdResults";
+import HistoryList from "@/components/HistoryList";
 import VideoAdCreator from "@/components/VideoAdCreator";
 import UGCAdCreator from "@/components/UGCAdCreator";
 
@@ -19,11 +20,19 @@ export default function HomePage() {
   const [adSet, setAdSet] = useState<AdSet | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [history, setHistory] = useState<Awaited<ReturnType<typeof getAdHistory>>>([]);
 
   useEffect(() => {
     if (authLoading) return;
     if (!token) router.push("/login");
   }, [token, authLoading, router]);
+
+  useEffect(() => {
+    if (!token) return;
+    getAdHistory(token)
+      .then(setHistory)
+      .catch(() => setHistory([]));
+  }, [token]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -33,11 +42,19 @@ export default function HomePage() {
     try {
       const result = await createAds(token, url);
       setAdSet(result);
+      getAdHistory(token)
+        .then(setHistory)
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Something went wrong.");
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleSelectHistory = (id: number) => {
+    const entry = history.find((h) => h.id === id);
+    if (entry) setAdSet(entry.result);
   };
 
   if (authLoading || !token) {
@@ -108,6 +125,20 @@ export default function HomePage() {
           </div>
 
           {adSet && <AdResults adSet={adSet} />}
+
+          <div className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Past ad sets</p>
+            <HistoryList
+              items={history.map((h) => ({
+                id: h.id,
+                title: h.product_title || h.product_url,
+                subtitle: h.product_url,
+                created_at: h.created_at,
+              }))}
+              onSelect={handleSelectHistory}
+              emptyText="No ad sets generated yet."
+            />
+          </div>
         </div>
       )}
 

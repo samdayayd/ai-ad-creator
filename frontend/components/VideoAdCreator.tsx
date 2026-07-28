@@ -1,9 +1,10 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
-import { ApiError, createVideoAd, fetchVideoBlobUrl } from "@/lib/api";
-import { VIDEO_DURATIONS, VideoAd } from "@/lib/types";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ApiError, createVideoAd, fetchVideoBlobUrl, getVideoHistory } from "@/lib/api";
+import { VIDEO_DURATIONS, VideoAd, VideoGeneration } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
+import HistoryList from "./HistoryList";
 
 export default function VideoAdCreator() {
   const { token } = useAuth();
@@ -15,9 +16,26 @@ export default function VideoAdCreator() {
   const [error, setError] = useState<string | null>(null);
   const [videoAd, setVideoAd] = useState<VideoAd | null>(null);
   const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null);
+  const [history, setHistory] = useState<VideoGeneration[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+    getVideoHistory(token)
+      .then(setHistory)
+      .catch(() => setHistory([]));
+  }, [token]);
 
   const handleImages = (e: ChangeEvent<HTMLInputElement>) => {
     setImages(e.target.files ? Array.from(e.target.files) : []);
+  };
+
+  const showVideo = async (result: VideoAd) => {
+    setVideoAd(result);
+    const blobUrl = await fetchVideoBlobUrl(token, result.video_url);
+    setVideoBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return blobUrl;
+    });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -29,13 +47,25 @@ export default function VideoAdCreator() {
     setGenerating(true);
     try {
       const result = await createVideoAd(token, images, productName, productDescription, duration);
-      setVideoAd(result);
-      const blobUrl = await fetchVideoBlobUrl(token, result.video_url);
-      setVideoBlobUrl(blobUrl);
+      await showVideo(result);
+      getVideoHistory(token)
+        .then(setHistory)
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Something went wrong.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleSelectHistory = async (id: number) => {
+    const entry = history.find((h) => h.id === id);
+    if (!entry) return;
+    setError(null);
+    try {
+      await showVideo(entry);
+    } catch {
+      setError("Couldn't load that video — it may no longer be available.");
     }
   };
 
@@ -145,6 +175,20 @@ export default function VideoAdCreator() {
           </div>
         </div>
       )}
+
+      <div className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Past videos</p>
+        <HistoryList
+          items={history.map((h) => ({
+            id: h.id,
+            title: h.product_title || "Video ad",
+            subtitle: `${h.actual_duration_seconds}s`,
+            created_at: h.created_at,
+          }))}
+          onSelect={handleSelectHistory}
+          emptyText="No videos generated yet."
+        />
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { TOKEN_KEY } from "./auth";
 import { AdGeneration, AdSet, Presenter, UGCAd, UGCGeneration, VideoAd, VideoGeneration, Voice } from "./types";
 
 export class ApiError extends Error {
@@ -31,6 +32,15 @@ async function apiFetch<T>(path: string, token: string | null, init?: RequestIni
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    // A 401 on the login call itself just means "wrong password" — nothing
+    // to clear, nowhere else to send them. A 401 on anything else means an
+    // expired/invalid session, so bounce back to login instead of leaving
+    // the user staring at a raw "Invalid or expired session" error string
+    // inline in whichever tab they were on.
+    if (res.status === 401 && path !== "/api/auth/login" && typeof window !== "undefined") {
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.href = "/login";
+    }
     throw new ApiError(res.status, body.detail ?? `Request to ${path} failed with status ${res.status}.`);
   }
   if (res.status === 204) return null as T;

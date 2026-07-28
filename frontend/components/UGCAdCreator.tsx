@@ -1,9 +1,10 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
-import { ApiError, createUgcAd, fetchVideoBlobUrl, getPresenters, getVoices } from "@/lib/api";
-import { CTA_OPTIONS, Presenter, UGCAd, Voice } from "@/lib/types";
+import { ApiError, createUgcAd, fetchVideoBlobUrl, getPresenters, getUgcHistory, getVoices } from "@/lib/api";
+import { CTA_OPTIONS, Presenter, UGCAd, UGCGeneration, Voice } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
+import HistoryList from "./HistoryList";
 
 export default function UGCAdCreator() {
   const { token } = useAuth();
@@ -23,6 +24,7 @@ export default function UGCAdCreator() {
   const [error, setError] = useState<string | null>(null);
   const [ugcAd, setUgcAd] = useState<UGCAd | null>(null);
   const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null);
+  const [history, setHistory] = useState<UGCGeneration[]>([]);
 
   useEffect(() => {
     if (!token) return;
@@ -41,10 +43,22 @@ export default function UGCAdCreator() {
         );
       })
       .finally(() => setLoadingSetup(false));
+    getUgcHistory(token)
+      .then(setHistory)
+      .catch(() => setHistory([]));
   }, [token]);
 
   const handleImages = (e: ChangeEvent<HTMLInputElement>) => {
     setImages(e.target.files ? Array.from(e.target.files) : []);
+  };
+
+  const showVideo = async (result: UGCAd) => {
+    setUgcAd(result);
+    const blobUrl = await fetchVideoBlobUrl(token, result.video_url);
+    setVideoBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return blobUrl;
+    });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -69,13 +83,25 @@ export default function UGCAdCreator() {
         voice?.name || "Voice",
         cta
       );
-      setUgcAd(result);
-      const blobUrl = await fetchVideoBlobUrl(token, result.video_url);
-      setVideoBlobUrl(blobUrl);
+      await showVideo(result);
+      getUgcHistory(token)
+        .then(setHistory)
+        .catch(() => {});
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Something went wrong.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleSelectHistory = async (id: number) => {
+    const entry = history.find((h) => h.id === id);
+    if (!entry) return;
+    setError(null);
+    try {
+      await showVideo(entry);
+    } catch {
+      setError("Couldn't load that video — it may no longer be available.");
     }
   };
 
@@ -248,6 +274,20 @@ export default function UGCAdCreator() {
           </div>
         </div>
       )}
+
+      <div className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Past UGC ads</p>
+        <HistoryList
+          items={history.map((h) => ({
+            id: h.id,
+            title: h.product_title || "UGC ad",
+            subtitle: `${h.presenter_name} · ${h.voice_name} · ${h.cta_text}`,
+            created_at: h.created_at,
+          }))}
+          onSelect={handleSelectHistory}
+          emptyText="No UGC ads generated yet."
+        />
+      </div>
     </div>
   );
 }

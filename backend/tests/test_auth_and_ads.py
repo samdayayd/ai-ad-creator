@@ -39,6 +39,28 @@ def test_login_wrong_password(client):
     assert r.status_code == 401
 
 
+def test_login_locks_out_after_repeated_failures(client):
+    for _ in range(5):
+        r = client.post("/api/auth/login", json={"email": "owner@example.com", "password": "wrong"})
+        assert r.status_code == 401
+    locked = client.post("/api/auth/login", json={"email": "owner@example.com", "password": "wrong"})
+    assert locked.status_code == 429
+    # Locked out even with the CORRECT password — the whole point of a
+    # lockout is stopping further guesses regardless of what's guessed next.
+    still_locked = client.post("/api/auth/login", json={"email": "owner@example.com", "password": "changeme123"})
+    assert still_locked.status_code == 429
+
+
+def test_login_success_clears_failure_count(client):
+    for _ in range(3):
+        client.post("/api/auth/login", json={"email": "owner@example.com", "password": "wrong"})
+    ok = client.post("/api/auth/login", json={"email": "owner@example.com", "password": "changeme123"})
+    assert ok.status_code == 200
+    # Back below the lockout threshold after a successful login.
+    r = client.post("/api/auth/login", json={"email": "owner@example.com", "password": "wrong"})
+    assert r.status_code == 401
+
+
 def test_create_ads_requires_auth(client):
     r = client.post("/api/ads/create", json={"url": "https://example.com/p"})
     assert r.status_code in (401, 403)

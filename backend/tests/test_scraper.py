@@ -1,3 +1,5 @@
+import socket
+
 import httpx
 import pytest
 
@@ -61,3 +63,48 @@ def test_fetch_product_info_raises_on_network_error(monkeypatch):
     monkeypatch.setattr(httpx, "get", _raise)
     with pytest.raises(Exception):
         fetch_product_info("https://example.com/unreachable")
+
+
+def _fake_getaddrinfo(ip: str):
+    def _resolve(hostname, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0))]
+
+    return _resolve
+
+
+def test_fetch_product_info_blocks_cloud_metadata_ip(monkeypatch):
+    """169.254.169.254 is the GCP/AWS metadata endpoint — letting the
+    scraper fetch it would leak this service's own cloud credentials to
+    anyone who can submit a "product URL"."""
+    monkeypatch.setattr(socket, "getaddrinfo", _fake_getaddrinfo("169.254.169.254"))
+    with pytest.raises(Exception):
+        fetch_product_info("http://metadata.google.internal/computeMetadata/v1/")
+
+
+def test_fetch_product_info_blocks_localhost(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", _fake_getaddrinfo("127.0.0.1"))
+    with pytest.raises(Exception):
+        fetch_product_info("http://localhost:8000/admin")
+
+
+def test_fetch_product_info_blocks_private_network(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", _fake_getaddrinfo("10.0.0.5"))
+    with pytest.raises(Exception):
+        fetch_product_info("http://internal.example.com/")
+
+
+def test_fetch_product_info_blocks_redirect_to_private_address(monkeypatch):
+    """A URL that resolves publicly but 302s to an internal address must be
+    blocked too — otherwise the up-front hostname check is a no-op bypassed
+    by anything the attacker can make redirect."""
+    monkeypatch.setattr(socket, "getaddrinfo", _fake_getaddrinfo("93.184.216.34"))  # example.com's real public IP
+
+    def _get(url, headers=None, follow_redirects=False, timeout=None):
+        if url == "https://example.com/redirect-me":
+            request = httpx.Request("GET", url)
+            return httpx.Response(302, headers={"Location": "http://169.254.169.254/"}, request=request)
+        raise AssertionError(f"should never actually fetch the redirect target: {url}")
+
+    monkeypatch.setattr(httpx, "get", _get)
+    with pytest.raises(Exception):
+        fetch_product_info("https://example.com/redirect-me")

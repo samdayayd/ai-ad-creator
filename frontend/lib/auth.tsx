@@ -10,7 +10,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const TOKEN_KEY = "ai_ad_creator_token";
+export const TOKEN_KEY = "ai_ad_creator_token";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
