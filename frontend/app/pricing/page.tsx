@@ -5,12 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, createBillingPortal, createCheckout, getMe, getPlans } from "@/lib/api";
 import { Me, Plan } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
+import { useLanguage } from "@/lib/LanguageProvider";
 
-const PLAN_BLURBS: Record<string, string> = {
-  free: "Try it out — watermarked, no card required.",
-  pro: "For regular use — no watermark.",
-  max: "For heavy use — no watermark, higher monthly limit.",
-};
+// Static display-only conversion, given directly by the app owner — the
+// actual Stripe charge still happens in SEK regardless of what's shown
+// here, since the Stripe Price IDs behind these plans are SEK-denominated.
+// True multi-currency billing would need separate per-currency Stripe
+// Prices (or Stripe's presentment-currency setup), which isn't wired up —
+// see the on-page disclaimer, which exists specifically so this doesn't
+// mislead anyone about what they'll actually be charged.
+const USD_PRICE: Record<string, number> = { free: 0, pro: 19, max: 49 };
 
 export default function PricingPage() {
   return (
@@ -22,6 +26,7 @@ export default function PricingPage() {
 
 function PricingContent() {
   const { token } = useAuth();
+  const { locale, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -31,6 +36,7 @@ function PricingContent() {
   const [error, setError] = useState<string | null>(null);
 
   const checkoutStatus = searchParams.get("checkout");
+  const showSek = locale === "sv";
 
   useEffect(() => {
     Promise.all([getPlans(), token ? getMe(token) : Promise.resolve(null)])
@@ -77,77 +83,70 @@ function PricingContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-white">Pricing</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Video and UGC ads count against your plan&apos;s quota. Text ads (paste a URL, get copy) are free on every
-          plan.
-        </p>
+        <h1 className="font-display text-2xl font-bold tracking-wide text-white">{t("pricing.title")}</h1>
+        <p className="mt-1 text-sm text-slate-400">{t("pricing.subtitle")}</p>
       </div>
 
       {checkoutStatus === "success" && (
         <p className="rounded-md border border-emerald-700 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-300">
-          Subscription active — thanks! It may take a few seconds to reflect here.
+          {t("pricing.checkoutSuccess")}
         </p>
       )}
       {checkoutStatus === "cancelled" && (
-        <p className="rounded-md border border-ink-700 bg-ink-900 px-4 py-3 text-sm text-slate-400">
-          Checkout cancelled — no charge was made.
-        </p>
+        <p className="panel px-4 py-3 text-sm text-slate-400">{t("pricing.checkoutCancelled")}</p>
       )}
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
       <div className="grid gap-4 sm:grid-cols-3">
         {plans.map((plan) => {
           const isCurrent = me?.plan === plan.id;
+          const priceLabel =
+            plan.price_sek === 0
+              ? t("pricing.free")
+              : showSek
+              ? `${plan.price_sek} kr`
+              : `$${USD_PRICE[plan.id] ?? plan.price_sek}`;
           return (
             <div
               key={plan.id}
-              className={`rounded-xl border p-6 ${
-                isCurrent ? "border-spark-500 bg-ink-900" : "border-ink-700 bg-ink-900"
-              }`}
+              className={`panel p-6 ${isCurrent ? "border-volt-400/60" : ""}`}
             >
-              <h2 className="text-lg font-bold capitalize text-white">{plan.name}</h2>
+              <h2 className="font-display text-lg font-bold capitalize text-white">{plan.name}</h2>
               <p className="mt-1 text-2xl font-extrabold text-white">
-                {plan.price_sek === 0 ? "Free" : `${plan.price_sek} kr`}
-                {plan.price_sek > 0 && <span className="text-sm font-normal text-slate-400">/month</span>}
+                {priceLabel}
+                {plan.price_sek > 0 && <span className="text-sm font-normal text-slate-400">{t("pricing.perMonth")}</span>}
               </p>
-              <p className="mt-2 text-sm text-slate-400">{PLAN_BLURBS[plan.id]}</p>
+              <p className="mt-2 text-sm text-slate-400">{t(`pricing.blurb.${plan.id}`)}</p>
               <p className="mt-3 text-sm text-slate-300">
                 {plan.video_limit} video{plan.video_limit === 1 ? "" : "s"}{" "}
-                {plan.id === "free" ? "total" : "per month"}
+                {plan.id === "free" ? t("pricing.total") : t("pricing.perMonthSuffix")}
               </p>
 
               <button
                 onClick={() => handleChoosePlan(plan.id)}
                 disabled={isCurrent || busyPlan === plan.id}
-                className={`mt-5 w-full rounded-md px-4 py-2 text-sm font-bold disabled:opacity-60 ${
-                  isCurrent
-                    ? "border border-ink-700 text-slate-400"
-                    : "bg-spark-500 text-white hover:bg-spark-400"
-                }`}
+                className={`mt-5 w-full ${isCurrent ? "btn-secondary" : "btn-primary"}`}
               >
                 {isCurrent
-                  ? "Current plan"
+                  ? t("pricing.current")
                   : busyPlan === plan.id
-                  ? "Redirecting…"
+                  ? t("pricing.redirecting")
                   : !token
-                  ? "Sign up"
+                  ? t("pricing.signUp")
                   : plan.id === "free"
-                  ? "Downgrade via billing portal"
-                  : "Subscribe"}
+                  ? t("pricing.downgrade")
+                  : t("pricing.subscribe")}
               </button>
             </div>
           );
         })}
       </div>
 
+      {!showSek && <p className="text-xs text-slate-500">{t("pricing.currencyNote")}</p>}
+
       {me && me.plan !== "free" && me.plan !== "owner" && (
-        <button
-          onClick={handleManageBilling}
-          disabled={busyPlan === "portal"}
-          className="rounded-md border border-ink-700 px-4 py-2 text-sm text-slate-300 hover:border-spark-500 hover:text-white disabled:opacity-60"
-        >
-          {busyPlan === "portal" ? "Opening…" : "Manage billing / cancel subscription"}
+        <button onClick={handleManageBilling} disabled={busyPlan === "portal"} className="btn-secondary">
+          {busyPlan === "portal" ? t("pricing.opening") : t("pricing.manageBilling")}
         </button>
       )}
     </div>

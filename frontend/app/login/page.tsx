@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApiError, login as loginRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useLanguage } from "@/lib/LanguageProvider";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -30,46 +32,36 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto mt-10 max-w-sm rounded-xl border border-ink-700 bg-ink-800 p-6">
-      <h1 className="text-xl font-bold text-white">Log in</h1>
+    <div className="panel mx-auto mt-10 max-w-sm p-6">
+      <h1 className="font-display text-xl font-bold tracking-wide text-white">{t("login.title")}</h1>
       <p className="mt-1 text-sm text-slate-400">
-        No account yet?{" "}
-        <Link href="/signup" className="text-spark-400 hover:underline">
-          Sign up
+        {t("login.noAccount")}{" "}
+        <Link href="/signup" className="text-volt-300 hover:underline">
+          {t("login.signUp")}
         </Link>
         .
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
-          />
+          <label className="label-tech">{t("login.email")}</label>
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Password</label>
+          <label className="label-tech">{t("login.password")}</label>
           <input
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-white outline-none focus:border-spark-500"
+            className="input-field"
           />
         </div>
 
         {error && <p className="text-sm text-rose-400">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-spark-500 px-4 py-2 text-sm font-bold text-white hover:bg-spark-400 disabled:opacity-60"
-        >
-          {submitting ? "Logging in…" : "Log in"}
+        <button type="submit" disabled={submitting} className="btn-primary w-full">
+          {submitting ? t("login.submitting") : t("login.submit")}
         </button>
       </form>
     </div>

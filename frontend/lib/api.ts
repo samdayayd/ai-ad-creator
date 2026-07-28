@@ -96,6 +96,14 @@ export function createBillingPortal(token: string | null): Promise<{ portal_url:
   return apiFetch("/api/billing/portal", token, { method: "POST" });
 }
 
+export function sendContactMessage(name: string, email: string, message: string): Promise<{ sent: boolean }> {
+  return apiFetch("/api/contact", null, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, message }),
+  });
+}
+
 export function createAds(token: string | null, url: string): Promise<AdSet> {
   return apiFetch("/api/ads/create", token, {
     method: "POST",

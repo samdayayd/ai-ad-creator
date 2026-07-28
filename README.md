@@ -1,4 +1,4 @@
-# AI Ad Creator ⭐⭐⭐⭐⭐
+# AdStorm Studio
 
 Three ways in:
 
@@ -197,6 +197,50 @@ from skipping, but you shouldn't:**
   outside anything this codebase can set up for you — sort it out before
   flipping `STRIPE_SECRET_KEY` from a test key to a live one.
 
+## Contact form
+
+`/contact` sends a message straight to your private inbox via SMTP
+(`backend/app/contact.py`) — the receiving address (`CONTACT_EMAIL`) is
+server-side only, never sent to the browser. Set `SMTP_HOST`,
+`SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `CONTACT_EMAIL`; the
+visitor's email is set as the message's `Reply-To`, so replying in your
+normal inbox goes straight back to them.
+
+Simplest setup with no new third-party signup: use your own Gmail account
+via an [App Password](https://myaccount.google.com/apppasswords) (`SMTP_HOST=smtp.gmail.com`,
+`SMTP_PORT=587`, `SMTP_USERNAME`/`CONTACT_EMAIL` your Gmail address,
+`SMTP_PASSWORD` the generated app password — not your normal Google
+password, which won't work). Any other SMTP provider works the same way.
+Rate-limited per IP (5 messages/hour) since it's a public, unauthenticated
+endpoint. Leave any of the five vars unset to disable the form; it returns
+a clear "not set up" error rather than failing silently.
+
+## Languages
+
+The marketing/account surface — navbar, footer, home page, login, signup,
+pricing, and the contact page — is available in English, Swedish, French,
+Spanish, German, Portuguese, and Arabic (with right-to-left layout),
+switchable from the navbar and remembered per-browser. It's a lightweight
+client-side dictionary (`frontend/lib/i18n.ts` + `LanguageProvider.tsx`),
+not a routing-based i18n framework — no `/fr/...` URLs, no middleware.
+
+**Deliberately out of scope for now**: the ad-creator tool's own form
+labels (Text/Video/UGC ad tabs) stay English. Whoever's already decided to
+pay is the least likely audience to bounce over an English form label, so
+translating the conversion-critical pages first was the better use of a
+bounded amount of effort — extending translations into the tool itself is
+straightforward from here (add keys to `i18n.ts`, swap in `t()` calls) if
+it turns out to matter.
+
+Pricing displays USD ($19/$49) for every language except Swedish, using
+the conversion the app owner gave directly — **not a live exchange rate**.
+The actual Stripe charge still happens in SEK regardless of what's
+displayed, since the Stripe Price IDs behind Pro/Max are SEK-denominated;
+real multi-currency billing would need separate per-currency Stripe Prices
+(or Stripe's presentment-currency setup), which isn't wired up. The
+pricing page says this explicitly so international visitors aren't
+surprised by their statement.
+
 ## Quickstart
 
 ### Option A — Docker (runs locally, one command)
@@ -379,13 +423,18 @@ Storage bucket for `VIDEO_STORAGE_DIR`) stops being optional.
   real Stripe webhook, not a mocked billing stub. The app owner's own
   account is exempt (unlimited, on a separate internal plan) — see
   [Plans & billing](#plans--billing).
+- **A real contact form**, not a `mailto:` link — sends via actual SMTP,
+  rate-limited, rejects header-injection attempts in the name/email fields
+  (a real, common vulnerability class for contact forms), the receiving
+  address never exposed client-side. See [Contact form](#contact-form).
 - **A real pytest suite** (`backend/tests/`) covering the scraper against
   both Open-Graph and plain-HTML fixtures (plus SSRF-blocking tests for
   private/metadata IPs and redirect bypasses), the ad generator's JSON
   parsing (including markdown-fenced responses and the missing-API-key
-  guard), quota rollover/lifetime-cap logic, and the Stripe webhook
-  dispatch logic — all with the Anthropic/Stripe/D-ID/ElevenLabs clients
-  mocked out so tests never spend real money, plus the full auth +
+  guard), quota rollover/lifetime-cap logic, the Stripe webhook dispatch
+  logic, and the contact form's rate limiting and injection guard — all
+  with the Anthropic/Stripe/D-ID/ElevenLabs/SMTP clients mocked out so
+  tests never spend real money or send real email, plus the full auth +
   ad-creation + billing + history API surface.
 - **Real video files, not mocked ones.** `test_video_generator.py` runs the
   actual `ffmpeg`/`espeak-ng` pipeline end-to-end (only the Claude script

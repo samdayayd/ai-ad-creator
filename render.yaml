@@ -49,6 +49,20 @@ services:
         sync: false
       - key: STRIPE_PRICE_ID_MAX
         sync: false
+      # Contact form — relays visitor messages to your private inbox via
+      # SMTP, never exposing that address to the frontend. Gmail + an App
+      # Password (myaccount.google.com/apppasswords) needs no new signup.
+      # Leave any of these unset to disable the form.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
       # Render's proxy defaults to port 10000 unless told otherwise — this
       # must match the port the Dockerfile's CMD actually listens on.
       - key: PORT

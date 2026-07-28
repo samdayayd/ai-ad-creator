@@ -16,6 +16,11 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_ID_PRO: ${STRIPE_PRICE_ID_PRO:-}
       STRIPE_PRICE_ID_MAX: ${STRIPE_PRICE_ID_MAX:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
       CORS_ORIGINS: http://localhost:3000
     volumes:
       - backend_data:/data

@@ -45,3 +45,14 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRICE_ID_PRO = os.environ.get("STRIPE_PRICE_ID_PRO", "")
 STRIPE_PRICE_ID_MAX = os.environ.get("STRIPE_PRICE_ID_MAX", "")
 
+# Contact form — relays a visitor's message to the owner's private inbox via
+# SMTP. CONTACT_EMAIL is never sent to the frontend/client; it only lives
+# here, server-side. Works with any SMTP provider — Gmail + an App Password
+# (myaccount.google.com/apppasswords) needs no new third-party signup at
+# all if you're fine sending from your own address.
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "")
+

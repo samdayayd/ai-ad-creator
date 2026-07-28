@@ -26,7 +26,7 @@ export default function HistoryList({
         <button
           key={item.id}
           onClick={() => onSelect(item.id)}
-          className="w-full rounded-md border border-ink-700 px-3 py-2 text-left text-sm text-slate-300 hover:border-spark-500 hover:text-white"
+          className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-left text-sm text-slate-300 transition hover:border-volt-400/60 hover:text-white"
         >
           <div className="flex items-center justify-between gap-2">
             <span className="truncate font-semibold">{item.title}</span>

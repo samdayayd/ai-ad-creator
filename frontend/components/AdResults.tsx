@@ -3,9 +3,9 @@ import CopyButton from "./CopyButton";
 
 function Section({ title, copyText, children }: { title: string; copyText: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-ink-700 bg-ink-900 p-4">
+    <section className="panel p-4">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-spark-400">{title}</h2>
+        <h2 className="font-display text-sm font-bold uppercase tracking-wide glow-text">{title}</h2>
         <CopyButton text={copyText} />
       </div>
       <div className="space-y-2 text-sm text-slate-200">{children}</div>
@@ -19,14 +19,14 @@ export default function AdResults({ adSet }: { adSet: AdSet }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-4">
+      <div className="panel flex items-center gap-3 p-4">
         {adSet.product_image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={adSet.product_image} alt="" className="h-16 w-16 rounded-lg object-cover" />
         )}
         <div>
           <p className="font-bold text-white">{adSet.product_title}</p>
-          <a href={adSet.product_url} target="_blank" rel="noreferrer" className="text-xs text-slate-400 underline">
+          <a href={adSet.product_url} target="_blank" rel="noreferrer" className="text-xs text-volt-300 underline">
             {adSet.product_url}
           </a>
         </div>
@@ -45,7 +45,7 @@ export default function AdResults({ adSet }: { adSet: AdSet }) {
         <p>
           <span className="font-semibold text-white">Caption:</span> {tiktok_ad.caption}
         </p>
-        <p className="text-spark-400">{tiktok_ad.hashtags.join(" ")}</p>
+        <p className="text-volt-300">{tiktok_ad.hashtags.join(" ")}</p>
       </Section>
 
       <Section

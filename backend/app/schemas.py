@@ -13,6 +13,12 @@ class SignupRequest(BaseModel):
     password: str
 
 
+class ContactRequest(BaseModel):
+    name: str
+    email: str
+    message: str
+
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

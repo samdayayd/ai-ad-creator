@@ -5,4 +5,60 @@
 body {
   background-color: #0b0a10;
   color: #f1edf7;
+  min-height: 100vh;
+  /* A faint moving grid plus two soft radial glows (magenta top-left, cyan
+     bottom-right) — a cheap, dependency-free way to get a "digital HUD
+     plane" backdrop instead of a flat color. All CSS, no images/canvas. */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 15% 0%, rgba(217, 70, 239, 0.12), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 85% 100%, rgba(34, 211, 238, 0.1), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 48px 48px, 48px 48px;
+  background-attachment: fixed;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    animation: grid-pan 6s linear infinite;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply relative rounded-xl border border-white/10 bg-ink-900/60 backdrop-blur-xl;
+    box-shadow: 0 0 40px -20px rgba(217, 70, 239, 0.3);
+  }
+
+  .btn-primary {
+    @apply rounded-md bg-gradient-to-r from-spark-500 to-volt-500 px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+    box-shadow: 0 0 20px -6px rgba(217, 70, 239, 0.7);
+  }
+  .btn-primary:not(:disabled):hover {
+    box-shadow: 0 0 26px -4px rgba(34, 211, 238, 0.8);
+  }
+
+  .btn-secondary {
+    @apply rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-volt-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input-field {
+    @apply w-full rounded-md border border-white/10 bg-ink-950/80 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-volt-400 focus:ring-1 focus:ring-volt-400/50;
+  }
+
+  .chip {
+    @apply rounded-md border border-white/10 px-3 py-1.5 text-sm font-semibold text-slate-300 transition hover:border-volt-400/60;
+  }
+  .chip-active {
+    @apply rounded-md border border-transparent bg-gradient-to-r from-spark-500 to-volt-500 px-3 py-1.5 text-sm font-semibold text-white;
+    box-shadow: 0 0 16px -4px rgba(217, 70, 239, 0.7);
+  }
+
+  .glow-text {
+    @apply bg-gradient-to-r from-spark-400 to-volt-400 bg-clip-text text-transparent;
+  }
+
+  .label-tech {
+    @apply mb-1 block font-display text-[0.65rem] uppercase tracking-[0.15em] text-volt-300/80;
+  }
 }

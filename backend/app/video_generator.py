@@ -214,12 +214,12 @@ def mix_music(video_path: Path, music_path: Path, out_path: Path) -> None:
 
 
 def apply_watermark(video_path: Path, out_path: Path) -> None:
-    """Burns a persistent "Made with AI Ad Creator" mark into free-plan
+    """Burns a persistent "Made with AdStorm Studio" mark into free-plan
     output — a final ffmpeg pass over the whole rendered video, bottom-right
     corner, applied after every other rendering step so it can't be cropped
     out by anything upstream. Paid plans skip this entirely."""
     vf = (
-        "drawtext=fontfile=" + FONT_PATH + ":text='Made with AI Ad Creator':"
+        "drawtext=fontfile=" + FONT_PATH + ":text='Made with AdStorm Studio':"
         "fontcolor=white@0.85:fontsize=28:box=1:boxcolor=black@0.4:boxborderw=10:"
         "x=w-text_w-24:y=h-text_h-24"
     )

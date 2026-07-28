@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
 from app.db import init_db
-from app.routers import ads, auth, billing, ugc_ads, video_ads
+from app.routers import ads, auth, billing, contact, ugc_ads, video_ads
 from app.seed import seed
 
 
@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AI Ad Creator", lifespan=lifespan)
+app = FastAPI(title="AdStorm Studio", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,6 +31,7 @@ app.include_router(ads.router)
 app.include_router(video_ads.router)
 app.include_router(ugc_ads.router)
 app.include_router(billing.router)
+app.include_router(contact.router)
 
 
 @app.get("/health")
