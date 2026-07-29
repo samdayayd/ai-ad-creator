@@ -209,7 +209,7 @@ export default function UGCAdCreator() {
               accept="image/jpeg,image/png,image/webp"
               multiple
               onChange={handleImages}
-              className="input-field file:mr-3 file:rounded file:border-0 file:bg-gradient-to-r file:from-spark-500 file:to-volt-500 file:px-3 file:py-1 file:text-white"
+              className="input-field file:mr-3 file:rounded file:border-0 file:bg-volt-400 file:px-3 file:py-1 file:font-semibold file:text-ink-950"
             />
             {images.length > 0 && <p className="mt-1 text-xs text-slate-500">{images.length} image(s) selected</p>}
           </div>

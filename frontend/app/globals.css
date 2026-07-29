@@ -81,8 +81,15 @@ body::after {
 
 @layer components {
   .panel {
-    @apply relative z-10 rounded-xl border border-white/10 bg-ink-900/60 backdrop-blur-xl;
-    box-shadow: 0 0 40px -20px rgba(217, 70, 239, 0.3);
+    @apply relative z-10 rounded-xl border border-volt-400/25 bg-ink-900/60 backdrop-blur-xl;
+    box-shadow: 0 0 30px -18px rgba(34, 211, 238, 0.6);
+  }
+
+  /* Brighter outline + stronger glow — used to call out a single
+     recommended option among several .panel cards (e.g. the Pro plan). */
+  .panel-popular {
+    @apply border-volt-400/70;
+    box-shadow: 0 0 40px -14px rgba(34, 211, 238, 0.9);
   }
 
   /* Targeting-frame corner brackets, HUD-style — two opposite L-shaped
@@ -112,60 +119,21 @@ body::after {
     filter: drop-shadow(0 0 3px theme("colors.volt.400"));
   }
 
+  /* Solid cyan — the app's one CTA color now (previously a magenta→cyan
+     gradient); applied everywhere via this shared class, so login, signup,
+     "Create ads," and pricing "Sign up" all match automatically. */
   .btn-primary {
-    @apply relative rounded-md bg-gradient-to-r from-spark-500 to-volt-500 px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition duration-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
-    box-shadow: 0 0 20px -6px rgba(217, 70, 239, 0.7);
+    @apply relative rounded-md bg-volt-400 px-4 py-2 text-sm font-bold uppercase tracking-wide text-ink-950 transition duration-200 hover:bg-volt-300 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+    box-shadow: 0 0 18px -4px rgba(34, 211, 238, 0.8);
     clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   }
   .btn-primary:not(:disabled):hover {
-    box-shadow: 0 0 26px -4px rgba(34, 211, 238, 0.8);
+    box-shadow: 0 0 26px -4px rgba(34, 211, 238, 0.9);
   }
 
   .btn-secondary {
     @apply border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-volt-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50;
     clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-  }
-
-  /* Solid cyan CTA — used on the pricing page instead of the magenta→cyan
-     gradient, to match a monochrome-cyan reference the app owner liked. */
-  .btn-cyan {
-    @apply relative rounded-md bg-volt-400 px-4 py-2 text-sm font-bold uppercase tracking-wide text-ink-950 transition duration-200 hover:bg-volt-300 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
-    box-shadow: 0 0 18px -4px rgba(34, 211, 238, 0.8);
-    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-  }
-
-  /* Pricing card — like .panel's corner-bracket treatment, plus a full thin
-     cyan outline so the whole card reads as "lit up," not just its corners.
-     .pricing-card-popular brightens that outline and adds a stronger glow
-     for the recommended plan. */
-  .pricing-card {
-    @apply relative z-10 rounded-xl border border-volt-400/25 bg-ink-900/60 backdrop-blur-xl;
-    box-shadow: 0 0 30px -18px rgba(34, 211, 238, 0.6);
-  }
-  .pricing-card::before,
-  .pricing-card::after {
-    content: "";
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    pointer-events: none;
-    opacity: 0.9;
-  }
-  .pricing-card::before {
-    top: -1px;
-    left: -1px;
-    border-top: 2px solid theme("colors.volt.400");
-    border-left: 2px solid theme("colors.volt.400");
-  }
-  .pricing-card::after {
-    bottom: -1px;
-    right: -1px;
-    border-bottom: 2px solid theme("colors.volt.400");
-    border-right: 2px solid theme("colors.volt.400");
-  }
-  .pricing-card-popular {
-    @apply border-volt-400/70;
-    box-shadow: 0 0 40px -14px rgba(34, 211, 238, 0.9);
   }
 
   .pricing-popular-badge {
@@ -180,12 +148,13 @@ body::after {
     @apply rounded-md border border-white/10 px-3 py-1.5 text-sm font-semibold text-slate-300 transition hover:border-volt-400/60;
   }
   .chip-active {
-    @apply rounded-md border border-transparent bg-gradient-to-r from-spark-500 to-volt-500 px-3 py-1.5 text-sm font-semibold text-white;
-    box-shadow: 0 0 16px -4px rgba(217, 70, 239, 0.7);
+    @apply rounded-md border border-transparent bg-volt-400 px-3 py-1.5 text-sm font-semibold text-ink-950;
+    box-shadow: 0 0 16px -4px rgba(34, 211, 238, 0.8);
   }
 
   .glow-text {
-    @apply bg-gradient-to-r from-spark-400 to-volt-400 bg-clip-text text-transparent;
+    @apply text-volt-300;
+    text-shadow: 0 0 12px rgba(34, 211, 238, 0.7);
   }
 
   .label-tech {

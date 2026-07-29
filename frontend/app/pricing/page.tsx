@@ -110,7 +110,7 @@ function PricingContent() {
           return (
             <div
               key={plan.id}
-              className={`pricing-card p-6 ${isPopular ? "pricing-card-popular" : ""}`}
+              className={`panel p-6 ${isPopular ? "panel-popular" : ""}`}
             >
               <div className="flex items-center gap-2">
                 <h2 className="font-display text-lg font-bold capitalize text-white">{plan.name}</h2>
@@ -132,7 +132,7 @@ function PricingContent() {
               <button
                 onClick={() => handleChoosePlan(plan.id)}
                 disabled={isCurrent || busyPlan === plan.id}
-                className={`mt-5 w-full ${isCurrent ? "btn-secondary" : "btn-cyan"}`}
+                className={`mt-5 w-full ${isCurrent ? "btn-secondary" : "btn-primary"}`}
               >
                 {isCurrent
                   ? t("pricing.current")
