@@ -110,7 +110,7 @@ function PricingContent() {
           return (
             <div
               key={plan.id}
-              className={`panel p-6 ${isPopular ? "panel-popular" : ""}`}
+              className={`panel p-6 transition-transform ${isPopular ? "panel-popular sm:z-20 sm:scale-105" : ""}`}
             >
               <div className="flex items-center gap-2">
                 <h2 className="font-display text-lg font-bold capitalize text-white">{plan.name}</h2>

@@ -32,7 +32,17 @@ UGC_CTA_OPTIONS = ("Buy Now", "Shop Today", "Limited Offer", "Order Today", "Lea
 # renders both count against the same overall quota — text ads don't, and
 # remain available to any signed-in account (see README for why that's a
 # deliberate, flagged tradeoff rather than an oversight).
-PLAN_LIMITS = {"free": 5, "pro": 20, "max": 60}
+#
+# These numbers were tightened from an earlier, more generous pass (5/20/60)
+# after working through real per-video cost math: Claude ($0.01-0.10) +
+# ElevenLabs ($0.02-0.10) + D-ID (the dominant cost, billed by video
+# time/credits) + hosting + Stripe's cut + an allowance for failed/
+# regenerated renders puts a realistic video cost at $0.50-1.20, and
+# possibly $1.50+ for premium avatars/voices. 20 videos for $19 (pro's old
+# number) could lose money on a single heavy month; 10 does not, with room
+# to spare. Still not measured against real usage — revisit once actual
+# D-ID/ElevenLabs bills exist, in either direction.
+PLAN_LIMITS = {"free": 3, "pro": 10, "max": 25}
 PLAN_PRICE_SEK = {"free": 0, "pro": 199, "max": 499}
 
 # UGC ads cost meaningfully more per generation than Ken-Burns video ads —
@@ -47,7 +57,7 @@ PLAN_PRICE_SEK = {"free": 0, "pro": 199, "max": 499}
 # sets of numbers once real ElevenLabs/D-ID per-generation costs are known
 # from actual usage; these are a deliberately conservative starting point,
 # not measured data.
-UGC_PLAN_LIMITS = {"free": 1, "pro": 5, "max": 15}
+UGC_PLAN_LIMITS = {"free": 1, "pro": 3, "max": 8}
 OWNER_PLAN = "owner"  # the seeded OWNER_EMAIL account — unlimited, not a paid plan
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")

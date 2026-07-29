@@ -131,7 +131,7 @@ def test_create_video_ad_watermarks_free_plan_but_not_owner(client, token, monke
 def test_create_video_ad_blocks_free_plan_after_lifetime_limit(client, monkeypatch):
     monkeypatch.setattr(video_ads_router, "generate_video_ad", _fake_generate_video_ad)
     free_token = _signup(client)
-    for _ in range(5):
+    for _ in range(3):
         r = client.post(
             "/api/video-ads/create",
             data={"product_name": "Widget", "duration_seconds": "20"},

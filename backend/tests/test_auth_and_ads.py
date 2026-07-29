@@ -73,7 +73,7 @@ def test_signup_new_account_starts_on_free_plan(client):
     me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
     assert me.json()["plan"] == "free"
-    assert me.json()["videos_remaining"] == 5
+    assert me.json()["videos_remaining"] == 3
 
 
 def test_signup_rejects_short_password(client):

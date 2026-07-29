@@ -110,8 +110,8 @@ def test_create_ugc_ad_blocked_by_general_video_quota_too(client, monkeypatch):
     monkeypatch.setattr(video_ads_router, "generate_video_ad", _fake_video)
     free_token = _signup(client, email="quota-edge@example.com")
 
-    # Exhaust the free plan's overall 5-video quota with cheap Ken-Burns ads.
-    for _ in range(5):
+    # Exhaust the free plan's overall 3-video quota with cheap Ken-Burns ads.
+    for _ in range(3):
         r = client.post(
             "/api/video-ads/create",
             data={"product_name": "Widget", "duration_seconds": "20"},

@@ -32,18 +32,18 @@ def _make_user(session, plan="free", videos_used=0, ugc_videos_used=0, usage_per
 
 
 def test_free_plan_lifetime_cap(session):
-    user = _make_user(session, plan="free", videos_used=4)
-    quota.ensure_video_quota_available(user, session)  # 5th is still allowed
+    user = _make_user(session, plan="free", videos_used=2)
+    quota.ensure_video_quota_available(user, session)  # 3rd is still allowed
     quota.consume_video_quota(user, session)
-    assert user.videos_used == 5
+    assert user.videos_used == 3
 
     with pytest.raises(Exception):
-        quota.ensure_video_quota_available(user, session)  # 6th is rejected
+        quota.ensure_video_quota_available(user, session)  # 4th is rejected
 
 
 def test_free_plan_never_rolls_over_even_after_a_long_time(session):
     long_ago = datetime.now(timezone.utc) - timedelta(days=400)
-    user = _make_user(session, plan="free", videos_used=5, usage_period_start=long_ago)
+    user = _make_user(session, plan="free", videos_used=3, usage_period_start=long_ago)
     with pytest.raises(Exception):
         quota.ensure_video_quota_available(user, session)
 
@@ -55,10 +55,10 @@ def test_pro_plan_monthly_limit(session):
     # started a period yet" and resets the counter (see the dedicated test
     # for that fallback behavior below).
     now = datetime.now(timezone.utc)
-    user = _make_user(session, plan="pro", videos_used=19, usage_period_start=now)
+    user = _make_user(session, plan="pro", videos_used=9, usage_period_start=now)
     quota.ensure_video_quota_available(user, session)
     quota.consume_video_quota(user, session)
-    assert user.videos_used == 20
+    assert user.videos_used == 10
 
     with pytest.raises(Exception):
         quota.ensure_video_quota_available(user, session)
@@ -66,7 +66,7 @@ def test_pro_plan_monthly_limit(session):
 
 def test_pro_plan_rolls_over_after_fallback_window(session):
     long_ago = datetime.now(timezone.utc) - timedelta(days=31)
-    user = _make_user(session, plan="pro", videos_used=20, usage_period_start=long_ago)
+    user = _make_user(session, plan="pro", videos_used=10, usage_period_start=long_ago)
     quota.ensure_video_quota_available(user, session)  # should reset, not raise
     assert user.videos_used == 0
 
@@ -77,7 +77,7 @@ def test_paid_plan_with_no_period_start_resets_rather_than_errors(session):
     violated — a data-integrity edge case, not a normal path — failing open
     (start a fresh period) is the safer default than either crashing or
     treating a possibly-new paying customer as already over quota."""
-    user = _make_user(session, plan="pro", videos_used=19, usage_period_start=None)
+    user = _make_user(session, plan="pro", videos_used=9, usage_period_start=None)
     quota.ensure_video_quota_available(user, session)
     assert user.videos_used == 0
     assert user.usage_period_start is not None
@@ -104,7 +104,7 @@ def test_failed_render_does_not_consume_quota(session):
 
 
 def test_ugc_sub_quota_is_tighter_than_general_video_quota_on_free_plan(session):
-    """Free allows 5 videos total but only 1 UGC ad — the UGC-specific
+    """Free allows 3 videos total but only 1 UGC ad — the UGC-specific
     ceiling should bind well before the general one would."""
     user = _make_user(session, plan="free", ugc_videos_used=0)
     quota.ensure_ugc_quota_available(user, session)  # 1st is allowed
@@ -114,14 +114,14 @@ def test_ugc_sub_quota_is_tighter_than_general_video_quota_on_free_plan(session)
     assert user.videos_used == 1
 
     with pytest.raises(Exception):
-        quota.ensure_ugc_quota_available(user, session)  # 2nd UGC ad rejected, well under the 5-video cap
+        quota.ensure_ugc_quota_available(user, session)  # 2nd UGC ad rejected, well under the 3-video cap
 
 
 def test_ugc_sub_quota_rolls_over_with_the_general_quota(session):
     now = datetime.now(timezone.utc)
-    user = _make_user(session, plan="pro", videos_used=15, ugc_videos_used=5, usage_period_start=now)
+    user = _make_user(session, plan="pro", videos_used=7, ugc_videos_used=3, usage_period_start=now)
     with pytest.raises(Exception):
-        quota.ensure_ugc_quota_available(user, session)  # pro's UGC cap is 5, already hit
+        quota.ensure_ugc_quota_available(user, session)  # pro's UGC cap is 3, already hit
 
     long_ago = now - timedelta(days=31)
     user.usage_period_start = long_ago

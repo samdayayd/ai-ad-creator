@@ -145,14 +145,19 @@ knowing if abuse becomes a real cost, not just a theoretical one.
 
 | Plan  | Price       | Videos (total)         | Of which, UGC ads | Watermark |
 |-------|-------------|------------------------|--------------------|-----------|
-| Free  | 0 kr        | 5, lifetime (not/mo)   | 1                  | Yes       |
-| Pro   | 199 kr/mo   | 20/month               | 5                  | No        |
-| Max   | 499 kr/mo   | 60/month               | 15                 | No        |
+| Free  | 0 kr        | 3, lifetime (not/mo)   | 1                  | Yes       |
+| Pro   | 199 kr/mo   | 10/month               | 3                  | No        |
+| Max   | 499 kr/mo   | 25/month               | 8                  | No        |
 
 The numbers live in `backend/app/config.py` (`PLAN_LIMITS`, `PLAN_PRICE_SEK`,
 `UGC_PLAN_LIMITS`) — plain config, not load-bearing, change them freely.
-They were picked to stay profitable against real per-video costs, not from
-any actual usage data yet — revisit once you have some.
+Tightened from an earlier, more generous pass (5/20/60) after working
+through real per-video cost math: Claude + ElevenLabs + D-ID (the dominant
+cost, billed by video time/credits) + hosting + Stripe's cut + a failed-
+render allowance puts a realistic video at $0.50-1.20, more for premium
+avatars/voices — 20 videos for $19 could lose money in a heavy month; 10
+does not. Still not measured against real usage — revisit once actual
+D-ID/ElevenLabs bills exist, in either direction.
 
 **Two ceilings, not one.** UGC ads cost meaningfully more to generate than
 Ken-Burns video ads — ElevenLabs voice synthesis and D-ID's talking-presenter
