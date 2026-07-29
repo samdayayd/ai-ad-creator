@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AdStorm Studio", lifespan=lifespan)
+app = FastAPI(title="ZeTruth Studio", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

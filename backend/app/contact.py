@@ -39,7 +39,7 @@ def send_contact_email(name: str, email: str, message: str) -> None:
         raise HTTPException(status_code=400, detail=f"Message is too long (max {MAX_MESSAGE_LENGTH} characters).")
 
     msg = MIMEText(f"From: {name} <{email}>\n\n{message}")
-    msg["Subject"] = f"AdStorm Studio contact form: {name}"
+    msg["Subject"] = f"ZeTruth Studio contact form: {name}"
     msg["From"] = SMTP_USERNAME
     msg["To"] = CONTACT_EMAIL
     msg["Reply-To"] = email

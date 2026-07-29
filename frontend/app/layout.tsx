@@ -9,7 +9,7 @@ import { LanguageProvider } from "@/lib/LanguageProvider";
 const orbitron = Orbitron({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "AdStorm Studio",
+  title: "ZeTruth Studio",
   description: "Paste a product URL, get a full ad set for every channel — one click.",
 };
 

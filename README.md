@@ -1,4 +1,4 @@
-# AdStorm Studio
+# ZeTruth Studio
 
 Three ways in:
 

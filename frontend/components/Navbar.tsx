@@ -31,7 +31,7 @@ export default function Navbar() {
             <span className="status-dot" aria-hidden="true" />
           </span>
           <span>
-            Ad<span className="glow-text">Storm</span> <span className="text-sm font-normal text-slate-400">Studio</span>
+            Ze<span className="glow-text">Truth</span> <span className="text-sm font-normal text-slate-400">Studio</span>
           </span>
         </Link>
         <div className="flex items-center gap-4">

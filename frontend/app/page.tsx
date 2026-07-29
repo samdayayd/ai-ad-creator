@@ -71,7 +71,7 @@ export default function HomePage() {
       </div>
       <div className="relative">
         <h1 className="font-display text-2xl font-bold tracking-wide text-white">
-          Ad<span className="glow-text">Storm</span> Studio
+          Ze<span className="glow-text">Truth</span> Studio
         </h1>
         <div className="mt-3 flex gap-2">
           <button onClick={() => setTab("text")} className={tab === "text" ? "chip-active" : "chip"}>

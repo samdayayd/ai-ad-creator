@@ -9,7 +9,7 @@ export default function Footer() {
     <footer className="border-t border-white/10 bg-ink-950/60 backdrop-blur">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-2 px-4 py-6 text-xs text-slate-500 sm:flex-row sm:justify-between">
         <span className="font-display tracking-wide">
-          Ad<span className="glow-text">Storm</span> Studio
+          Ze<span className="glow-text">Truth</span> Studio
         </span>
         <div className="flex gap-4">
           <Link href="/pricing" className="hover:text-volt-300">
