@@ -54,6 +54,17 @@ body::after {
   }
 }
 
+@keyframes hud-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes hud-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   body::before {
     content: "";
@@ -147,5 +158,115 @@ body::after {
   .hex-badge {
     @apply relative flex items-center justify-center border border-volt-400/50 bg-volt-500/10;
     clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
+  }
+
+  /* Arc-reactor logo badge — two counter-rotating rings around a glowing
+     core, Jarvis-style, in place of a static icon. */
+  .reactor-badge {
+    @apply relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.22), transparent 70%);
+  }
+  .reactor-badge::before,
+  .reactor-badge::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+  }
+  .reactor-badge::before {
+    inset: -3px;
+    border: 1px solid theme("colors.volt.400");
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+    opacity: 0.8;
+  }
+  .reactor-badge::after {
+    inset: 4px;
+    border: 1px dashed theme("colors.spark.400");
+    opacity: 0.5;
+  }
+}
+
+/* Decorative Jarvis-style HUD rings (see components/HudRings.tsx) — a
+   background layer, never interactive, so it sits at z-index 0 behind
+   whatever real content the page stacks on top of it. */
+.hud-rings {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hud-rings-svg {
+  width: 100%;
+  height: 100%;
+  max-width: 640px;
+  max-height: 640px;
+  overflow: visible;
+}
+.hud-ring-outer,
+.hud-ring-mid,
+.hud-ring-inner {
+  fill: none;
+  stroke: theme("colors.volt.400");
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.hud-ring-outer {
+  stroke-width: 1;
+  stroke-dasharray: 2 10;
+  opacity: 0.35;
+  filter: drop-shadow(0 0 4px theme("colors.volt.400"));
+}
+.hud-ring-mid {
+  stroke-width: 1.5;
+  stroke-dasharray: 40 6 4 6;
+  opacity: 0.4;
+}
+.hud-ring-inner {
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+  opacity: 0.3;
+}
+.hud-ring-ticks line {
+  stroke: theme("colors.volt.300");
+  stroke-width: 1;
+  opacity: 0.4;
+}
+.hud-core {
+  fill: theme("colors.volt.400");
+  filter: drop-shadow(0 0 6px theme("colors.volt.400"));
+}
+.hud-sweep {
+  position: absolute;
+  inset: 10%;
+  border-radius: 9999px;
+  background: conic-gradient(from 0deg, rgba(34, 211, 238, 0.22), transparent 20%, transparent 100%);
+  mix-blend-mode: screen;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hud-ring-outer {
+    animation: hud-spin 40s linear infinite;
+  }
+  .hud-ring-mid {
+    animation: hud-spin-reverse 26s linear infinite;
+  }
+  .hud-ring-inner {
+    animation: hud-spin 14s linear infinite;
+  }
+  .hud-core {
+    animation: pulse-glow 2.5s ease-in-out infinite;
+  }
+  .hud-sweep {
+    animation: hud-spin 7s linear infinite;
+  }
+  .reactor-badge::before {
+    animation: hud-spin 4s linear infinite;
+  }
+  .reactor-badge::after {
+    animation: hud-spin-reverse 6s linear infinite;
   }
 }

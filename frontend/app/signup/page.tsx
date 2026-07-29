@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, signup as signupRequest } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/lib/LanguageProvider";
+import HudRings from "@/components/HudRings";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -38,42 +39,45 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="panel mx-auto mt-10 max-w-sm p-6">
-      <h1 className="font-display text-xl font-bold tracking-wide text-white">{t("signup.title")}</h1>
-      <p className="mt-1 text-sm text-slate-400">{t("signup.subtitle")}</p>
+    <div className="relative mx-auto flex min-h-[520px] max-w-2xl items-center justify-center">
+      <HudRings />
+      <div className="panel w-full max-w-sm p-6">
+        <h1 className="font-display text-xl font-bold tracking-wide text-white">{t("signup.title")}</h1>
+        <p className="mt-1 text-sm text-slate-400">{t("signup.subtitle")}</p>
 
-      <form onSubmit={handleSubmit} className="mt-5 space-y-3">
-        <div>
-          <label className="label-tech">{t("signup.email")}</label>
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field" />
-        </div>
-        <div>
-          <label className="label-tech">{t("signup.password")}</label>
-          <input
-            type="password"
-            required
-            minLength={MIN_PASSWORD_LENGTH}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input-field"
-          />
-          <p className="mt-1 text-xs text-slate-500">{t("signup.passwordHint")}</p>
-        </div>
+        <form onSubmit={handleSubmit} className="mt-5 space-y-3">
+          <div>
+            <label className="label-tech">{t("signup.email")}</label>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field" />
+          </div>
+          <div>
+            <label className="label-tech">{t("signup.password")}</label>
+            <input
+              type="password"
+              required
+              minLength={MIN_PASSWORD_LENGTH}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="input-field"
+            />
+            <p className="mt-1 text-xs text-slate-500">{t("signup.passwordHint")}</p>
+          </div>
 
-        {error && <p className="text-sm text-rose-400">{error}</p>}
+          {error && <p className="text-sm text-rose-400">{error}</p>}
 
-        <button type="submit" disabled={submitting} className="btn-primary w-full">
-          {submitting ? t("signup.submitting") : t("signup.submit")}
-        </button>
-      </form>
+          <button type="submit" disabled={submitting} className="btn-primary w-full">
+            {submitting ? t("signup.submitting") : t("signup.submit")}
+          </button>
+        </form>
 
-      <p className="mt-4 text-sm text-slate-400">
-        {t("signup.haveAccount")}{" "}
-        <Link href="/login" className="text-volt-300 hover:underline">
-          {t("signup.login")}
-        </Link>
-        .
-      </p>
+        <p className="mt-4 text-sm text-slate-400">
+          {t("signup.haveAccount")}{" "}
+          <Link href="/login" className="text-volt-300 hover:underline">
+            {t("signup.login")}
+          </Link>
+          .
+        </p>
+      </div>
     </div>
   );
 }

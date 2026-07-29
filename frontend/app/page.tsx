@@ -10,6 +10,7 @@ import AdResults from "@/components/AdResults";
 import HistoryList from "@/components/HistoryList";
 import VideoAdCreator from "@/components/VideoAdCreator";
 import UGCAdCreator from "@/components/UGCAdCreator";
+import HudRings from "@/components/HudRings";
 
 type Tab = "text" | "video" | "ugc";
 
@@ -64,8 +65,11 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="relative space-y-6">
+      <div className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 opacity-40 sm:opacity-60">
+        <HudRings />
+      </div>
+      <div className="relative">
         <h1 className="font-display text-2xl font-bold tracking-wide text-white">
           Ad<span className="glow-text">Storm</span> Studio
         </h1>
