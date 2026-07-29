@@ -126,6 +126,52 @@ body::after {
     clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   }
 
+  /* Solid cyan CTA — used on the pricing page instead of the magenta→cyan
+     gradient, to match a monochrome-cyan reference the app owner liked. */
+  .btn-cyan {
+    @apply relative rounded-md bg-volt-400 px-4 py-2 text-sm font-bold uppercase tracking-wide text-ink-950 transition duration-200 hover:bg-volt-300 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+    box-shadow: 0 0 18px -4px rgba(34, 211, 238, 0.8);
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+
+  /* Pricing card — like .panel's corner-bracket treatment, plus a full thin
+     cyan outline so the whole card reads as "lit up," not just its corners.
+     .pricing-card-popular brightens that outline and adds a stronger glow
+     for the recommended plan. */
+  .pricing-card {
+    @apply relative z-10 rounded-xl border border-volt-400/25 bg-ink-900/60 backdrop-blur-xl;
+    box-shadow: 0 0 30px -18px rgba(34, 211, 238, 0.6);
+  }
+  .pricing-card::before,
+  .pricing-card::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+  .pricing-card::before {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid theme("colors.volt.400");
+    border-left: 2px solid theme("colors.volt.400");
+  }
+  .pricing-card::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 2px solid theme("colors.volt.400");
+    border-right: 2px solid theme("colors.volt.400");
+  }
+  .pricing-card-popular {
+    @apply border-volt-400/70;
+    box-shadow: 0 0 40px -14px rgba(34, 211, 238, 0.9);
+  }
+
+  .pricing-popular-badge {
+    @apply rounded-full border border-volt-400 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-volt-300;
+  }
+
   .input-field {
     @apply w-full rounded-md border border-white/10 bg-ink-950/80 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-volt-400 focus:ring-1 focus:ring-volt-400/50;
   }

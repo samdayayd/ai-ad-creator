@@ -100,6 +100,7 @@ function PricingContent() {
       <div className="grid gap-4 sm:grid-cols-3">
         {plans.map((plan) => {
           const isCurrent = me?.plan === plan.id;
+          const isPopular = plan.id === "pro";
           const priceLabel =
             plan.price_sek === 0
               ? t("pricing.free")
@@ -109,9 +110,12 @@ function PricingContent() {
           return (
             <div
               key={plan.id}
-              className={`panel p-6 ${isCurrent ? "border-volt-400/60" : ""}`}
+              className={`pricing-card p-6 ${isPopular ? "pricing-card-popular" : ""}`}
             >
-              <h2 className="font-display text-lg font-bold capitalize text-white">{plan.name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-lg font-bold capitalize text-white">{plan.name}</h2>
+                {isPopular && <span className="pricing-popular-badge">{t("pricing.popular")}</span>}
+              </div>
               <p className="mt-1 text-2xl font-extrabold text-white">
                 {priceLabel}
                 {plan.price_sek > 0 && <span className="text-sm font-normal text-slate-400">{t("pricing.perMonth")}</span>}
@@ -128,7 +132,7 @@ function PricingContent() {
               <button
                 onClick={() => handleChoosePlan(plan.id)}
                 disabled={isCurrent || busyPlan === plan.id}
-                className={`mt-5 w-full ${isCurrent ? "btn-secondary" : "btn-primary"}`}
+                className={`mt-5 w-full ${isCurrent ? "btn-secondary" : "btn-cyan"}`}
               >
                 {isCurrent
                   ? t("pricing.current")
