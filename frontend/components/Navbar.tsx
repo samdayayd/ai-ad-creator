@@ -45,6 +45,12 @@ export default function Navbar() {
             <span className="hidden text-sm text-slate-400 md:inline">
               <span className="capitalize text-volt-300">{me.plan}</span> {t("nav.plan")} ·{" "}
               {me.videos_remaining === null ? t("nav.unlimited") : `${me.videos_remaining} ${t("nav.videosLeft")}`}
+              {(me.purchased_video_credits > 0 || me.purchased_ugc_credits > 0) && (
+                <span className="text-volt-400">
+                  {" "}
+                  · {t("nav.purchasedCredits").replace("{n}", String(me.purchased_video_credits + me.purchased_ugc_credits))}
+                </span>
+              )}
             </span>
           )}
           <select

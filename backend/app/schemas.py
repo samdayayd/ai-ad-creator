@@ -31,6 +31,8 @@ class MeOut(BaseModel):
     videos_remaining: int | None  # None means unlimited (the owner account)
     ugc_videos_used: int
     ugc_videos_remaining: int | None  # None means unlimited (the owner account)
+    purchased_video_credits: int  # pay-as-you-go top-ups, never expire
+    purchased_ugc_credits: int
 
 
 class PlanOut(BaseModel):
@@ -47,6 +49,18 @@ class CheckoutRequest(BaseModel):
 
 class CheckoutResponse(BaseModel):
     checkout_url: str
+
+
+class CreditPackOut(BaseModel):
+    sku: str
+    kind: str  # "video" | "ugc"
+    credits: int
+    price_usd: float
+    label: str
+
+
+class CreditCheckoutRequest(BaseModel):
+    sku: str
 
 
 class PortalResponse(BaseModel):

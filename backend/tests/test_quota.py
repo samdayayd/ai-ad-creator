@@ -136,3 +136,41 @@ def test_owner_plan_ugc_is_unlimited(session):
     user = _make_user(session, plan="owner", ugc_videos_used=99999)
     quota.ensure_ugc_quota_available(user, session)  # never raises
     assert quota.remaining_ugc_videos(user) is None
+
+
+def test_purchased_video_credit_covers_render_after_plan_quota_exhausted(session):
+    user = _make_user(session, plan="free", videos_used=3)  # free's cap is 3, already hit
+    user.purchased_video_credits = 2
+    session.add(user)
+    session.commit()
+
+    quota.ensure_video_quota_available(user, session)  # doesn't raise — a purchased credit covers it
+    quota.consume_video_quota(user, session)
+    assert user.videos_used == 3  # plan counter untouched
+    assert user.purchased_video_credits == 1  # drew from the purchased balance instead
+
+
+def test_video_quota_blocked_when_plan_and_purchased_credits_both_exhausted(session):
+    user = _make_user(session, plan="free", videos_used=3)
+    with pytest.raises(Exception):
+        quota.ensure_video_quota_available(user, session)
+
+
+def test_purchased_ugc_credit_covers_render_after_plan_ugc_quota_exhausted(session):
+    now = datetime.now(timezone.utc)
+    user = _make_user(session, plan="pro", ugc_videos_used=3, usage_period_start=now)  # pro's UGC cap is 3
+    user.purchased_ugc_credits = 2
+    session.add(user)
+    session.commit()
+
+    quota.ensure_ugc_quota_available(user, session)  # doesn't raise
+    assert quota.ugc_covered_by_purchased_credit(user) is True
+
+    quota.consume_ugc_quota(user, session)
+    assert user.ugc_videos_used == 3  # plan counter untouched
+    assert user.purchased_ugc_credits == 1
+
+
+def test_ugc_covered_by_purchased_credit_is_false_when_plan_quota_has_room(session):
+    user = _make_user(session, plan="free", ugc_videos_used=0)
+    assert quota.ugc_covered_by_purchased_credit(user) is False

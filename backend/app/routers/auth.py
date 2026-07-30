@@ -87,4 +87,6 @@ def me(user: User = Depends(get_current_user)):
         videos_remaining=remaining_videos(user),
         ugc_videos_used=user.ugc_videos_used,
         ugc_videos_remaining=remaining_ugc_videos(user),
+        purchased_video_credits=user.purchased_video_credits,
+        purchased_ugc_credits=user.purchased_ugc_credits,
     )

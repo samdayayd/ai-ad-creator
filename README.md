@@ -173,6 +173,35 @@ rule out.
 The app owner's own account (seeded from `OWNER_EMAIL`) is unlimited and
 never watermarked, on a separate internal `"owner"` plan nobody can buy.
 
+### Pay-as-you-go (one-time video purchases)
+
+On top of the monthly/lifetime plan quota, anyone — including Free users
+who haven't subscribed at all — can buy extra videos individually via a
+one-time Stripe Checkout (`mode="payment"`, not a subscription). Credits
+never expire and are spent only once the matching plan allowance for that
+render is exhausted (see `backend/app/quota.py`'s fallback order). The SKUs
+live in `backend/app/config.py`'s `CREDIT_PACKS`:
+
+| Pack | Price | Per video |
+|------|-------|-----------|
+| 1 Standard video | $3 | $3.00 |
+| 5 Standard videos | $13 | $2.60 |
+| 10 Standard videos | $24 | $2.40 |
+| 1 UGC video | $6 | $6.00 |
+| 5 UGC videos | $22 | $4.40 |
+| 10 UGC videos | $40 | $4.00 |
+
+Priced in real USD (not converted from SEK like the subscription plans are
+displayed) since these are genuine new charges, and priced comfortably
+above the estimated per-video cost so every purchase is independently
+profitable regardless of plan. A purchased UGC credit is a standalone unit
+— it does not also draw from the general video quota, since it's already
+priced to cover its own real cost. No extra Stripe dashboard setup needed
+beyond what subscriptions already require: the same webhook endpoint and
+`checkout.session.completed` subscription handles both, since the
+`mode` field is what tells a one-time purchase apart from a subscription
+checkout.
+
 ### Setting up Stripe
 
 1. Create a [Stripe](https://dashboard.stripe.com) account and, in **Test

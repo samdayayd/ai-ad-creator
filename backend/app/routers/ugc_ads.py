@@ -13,6 +13,7 @@ from app.quota import (
     consume_video_quota,
     ensure_ugc_quota_available,
     ensure_video_quota_available,
+    ugc_covered_by_purchased_credit,
 )
 from app.schemas import (
     PresenterOut,
@@ -115,8 +116,13 @@ async def create_ugc_ad(
     if script_hook and script_intro and script_benefits and script_cta_line:
         script = UGCScript(hook=script_hook, intro=script_intro, benefits=script_benefits, cta_line=script_cta_line)
 
-    ensure_video_quota_available(user, session)
     ensure_ugc_quota_available(user, session)
+    # A purchased UGC credit is a standalone, already-fully-paid-for unit —
+    # only check/consume the general quota when this render will actually
+    # draw from the plan's own UGC allowance instead.
+    uses_purchased_ugc_credit = ugc_covered_by_purchased_credit(user)
+    if not uses_purchased_ugc_credit:
+        ensure_video_quota_available(user, session)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         workdir = Path(tmpdir)
@@ -144,7 +150,8 @@ async def create_ugc_ad(
             script=script,
             watermark=(user.plan == "free"),
         )
-        consume_video_quota(user, session)
+        if not uses_purchased_ugc_credit:
+            consume_video_quota(user, session)
         consume_ugc_quota(user, session)
 
         script_json = {

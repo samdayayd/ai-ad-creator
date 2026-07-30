@@ -2,10 +2,22 @@ from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.billing import create_checkout_session, create_portal_session, handle_webhook_event
-from app.config import PLAN_LIMITS, PLAN_PRICE_SEK, UGC_PLAN_LIMITS
+from app.billing import (
+    create_checkout_session,
+    create_credit_checkout_session,
+    create_portal_session,
+    handle_webhook_event,
+)
+from app.config import CREDIT_PACKS, PLAN_LIMITS, PLAN_PRICE_SEK, UGC_PLAN_LIMITS
 from app.db import User, get_session
-from app.schemas import CheckoutRequest, CheckoutResponse, PlanOut, PortalResponse
+from app.schemas import (
+    CheckoutRequest,
+    CheckoutResponse,
+    CreditCheckoutRequest,
+    CreditPackOut,
+    PlanOut,
+    PortalResponse,
+)
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -31,6 +43,28 @@ def plans():
 @router.post("/checkout", response_model=CheckoutResponse)
 def checkout(body: CheckoutRequest, user: User = Depends(get_current_user)):
     url = create_checkout_session(user, body.plan)
+    return CheckoutResponse(checkout_url=url)
+
+
+@router.get("/credit-packs", response_model=list[CreditPackOut])
+def credit_packs():
+    """Publicly readable, same reasoning as /plans — a signed-out visitor
+    can see what pay-as-you-go costs before deciding whether to sign up."""
+    return [
+        CreditPackOut(
+            sku=sku,
+            kind=pack["kind"],
+            credits=pack["credits"],
+            price_usd=pack["price_usd_cents"] / 100,
+            label=pack["label"],
+        )
+        for sku, pack in CREDIT_PACKS.items()
+    ]
+
+
+@router.post("/credits/checkout", response_model=CheckoutResponse)
+def credits_checkout(body: CreditCheckoutRequest, user: User = Depends(get_current_user)):
+    url = create_credit_checkout_session(user, body.sku)
     return CheckoutResponse(checkout_url=url)
 
 

@@ -2,6 +2,7 @@ import { TOKEN_KEY } from "./auth";
 import {
   AdGeneration,
   AdSet,
+  CreditPack,
   Me,
   Plan,
   Presenter,
@@ -94,6 +95,18 @@ export function createCheckout(token: string | null, plan: string): Promise<{ ch
 
 export function createBillingPortal(token: string | null): Promise<{ portal_url: string }> {
   return apiFetch("/api/billing/portal", token, { method: "POST" });
+}
+
+export function getCreditPacks(): Promise<CreditPack[]> {
+  return apiFetch("/api/billing/credit-packs", null);
+}
+
+export function createCreditCheckout(token: string | null, sku: string): Promise<{ checkout_url: string }> {
+  return apiFetch("/api/billing/credits/checkout", token, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sku }),
+  });
 }
 
 export function sendContactMessage(name: string, email: string, message: string): Promise<{ sent: boolean }> {

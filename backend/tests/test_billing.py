@@ -115,3 +115,60 @@ def test_webhook_rejects_invalid_signature(monkeypatch, session):
     monkeypatch.setattr(billing.stripe.Webhook, "construct_event", _raise)
     with pytest.raises(Exception):
         billing.handle_webhook_event(b"{}", "bad-signature", session)
+
+
+def test_credit_purchase_completed_adds_video_credits(session):
+    user = _make_user(session, plan="free")
+    data = {"mode": "payment", "metadata": {"user_id": str(user.id), "sku": "standard_5"}}
+    billing._on_credit_purchase_completed(data, session)
+    session.refresh(user)
+    assert user.purchased_video_credits == 5
+    assert user.purchased_ugc_credits == 0
+
+
+def test_credit_purchase_completed_adds_ugc_credits(session):
+    user = _make_user(session, plan="free")
+    data = {"mode": "payment", "metadata": {"user_id": str(user.id), "sku": "ugc_1"}}
+    billing._on_credit_purchase_completed(data, session)
+    session.refresh(user)
+    assert user.purchased_ugc_credits == 1
+    assert user.purchased_video_credits == 0
+
+
+def test_credit_purchase_completed_ignores_unknown_sku(session):
+    user = _make_user(session, plan="free")
+    data = {"mode": "payment", "metadata": {"user_id": str(user.id), "sku": "not-a-real-sku"}}
+    billing._on_credit_purchase_completed(data, session)  # should not raise
+    session.refresh(user)
+    assert user.purchased_video_credits == 0
+    assert user.purchased_ugc_credits == 0
+
+
+def test_webhook_routes_payment_mode_checkout_to_credit_purchase(monkeypatch, session):
+    """checkout.session.completed fires for both subscription and one-time
+    Checkout Sessions — mode is what the webhook uses to tell them apart."""
+    monkeypatch.setattr(billing, "STRIPE_SECRET_KEY", "sk_test_fake")
+    user = _make_user(session, plan="free")
+    fake_event = {
+        "type": "checkout.session.completed",
+        "data": {"object": {"mode": "payment", "metadata": {"user_id": str(user.id), "sku": "standard_1"}}},
+    }
+    monkeypatch.setattr(billing.stripe.Webhook, "construct_event", lambda *a, **k: fake_event)
+    billing.handle_webhook_event(b"{}", "sig", session)
+    session.refresh(user)
+    assert user.purchased_video_credits == 1
+    assert user.plan == "free"  # unaffected — this must not run the subscription handler
+
+
+def test_create_credit_checkout_requires_stripe_key(monkeypatch):
+    monkeypatch.setattr(billing, "STRIPE_SECRET_KEY", "")
+    user = User(id=1, email="u@example.com", hashed_password="x", plan="free")
+    with pytest.raises(Exception):
+        billing.create_credit_checkout_session(user, "standard_1")
+
+
+def test_create_credit_checkout_rejects_unknown_sku(monkeypatch):
+    monkeypatch.setattr(billing, "STRIPE_SECRET_KEY", "sk_test_fake")
+    user = User(id=1, email="u@example.com", hashed_password="x", plan="free")
+    with pytest.raises(Exception):
+        billing.create_credit_checkout_session(user, "not-a-real-sku")

@@ -107,6 +107,8 @@ export interface Me {
   videos_remaining: number | null; // null means unlimited (the owner account)
   ugc_videos_used: number;
   ugc_videos_remaining: number | null; // null means unlimited (the owner account)
+  purchased_video_credits: number; // pay-as-you-go top-ups, never expire
+  purchased_ugc_credits: number;
 }
 
 export interface Plan {
@@ -115,5 +117,13 @@ export interface Plan {
   price_sek: number;
   video_limit: number;
   ugc_video_limit: number;
+}
+
+export interface CreditPack {
+  sku: string;
+  kind: "video" | "ugc";
+  credits: number;
+  price_usd: number;
+  label: string;
 }
 

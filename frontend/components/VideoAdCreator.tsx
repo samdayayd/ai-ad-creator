@@ -2,13 +2,23 @@
 
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { ApiError, createVideoAd, createVideoScript, fetchVideoBlobUrl, getVideoHistory } from "@/lib/api";
+import {
+  ApiError,
+  createCreditCheckout,
+  createVideoAd,
+  createVideoScript,
+  fetchVideoBlobUrl,
+  getVideoHistory,
+} from "@/lib/api";
 import { VIDEO_DURATIONS, VideoAd, VideoGeneration } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
+import { useLanguage } from "@/lib/LanguageProvider";
 import HistoryList from "./HistoryList";
 
 export default function VideoAdCreator() {
   const { token } = useAuth();
+  const { t } = useLanguage();
+  const [buyingCredit, setBuyingCredit] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
@@ -100,6 +110,17 @@ export default function VideoAdCreator() {
       setError(err instanceof ApiError ? err.detail : "Something went wrong.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleBuyStandardCredit = async () => {
+    setBuyingCredit(true);
+    try {
+      const { checkout_url } = await createCreditCheckout(token, "standard_1");
+      window.location.href = checkout_url;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Couldn't start checkout.");
+      setBuyingCredit(false);
     }
   };
 
@@ -224,9 +245,18 @@ export default function VideoAdCreator() {
           <div className="mt-3 text-sm text-rose-400">
             <p>{error}</p>
             {quotaExceeded && (
-              <Link href="/pricing" className="mt-1 inline-block text-volt-300 underline">
-                See plans →
-              </Link>
+              <div className="mt-3 rounded-lg border border-white/10 bg-ink-950/60 p-3">
+                <p className="font-display text-sm font-bold text-white">{t("credits.outOfVideos")}</p>
+                <p className="mt-1 text-xs text-slate-400">{t("credits.outOfVideosBody")}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button onClick={handleBuyStandardCredit} disabled={buyingCredit} className="btn-primary">
+                    {buyingCredit ? t("credits.buying") : t("credits.buyStandardShort")}
+                  </button>
+                  <Link href="/pricing" className="btn-secondary">
+                    See plans →
+                  </Link>
+                </div>
+              </div>
             )}
           </div>
         )}

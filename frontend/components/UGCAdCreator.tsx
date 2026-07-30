@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ApiError,
+  createCreditCheckout,
   createUgcAd,
   createUgcScript,
   fetchVideoBlobUrl,
@@ -13,10 +14,13 @@ import {
 } from "@/lib/api";
 import { CTA_OPTIONS, Presenter, UGCAd, UGCGeneration, UGCScript, Voice } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
+import { useLanguage } from "@/lib/LanguageProvider";
 import HistoryList from "./HistoryList";
 
 export default function UGCAdCreator() {
   const { token } = useAuth();
+  const { t } = useLanguage();
+  const [buyingCredit, setBuyingCredit] = useState<string | null>(null);
   const [presenters, setPresenters] = useState<Presenter[]>([]);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -145,6 +149,17 @@ export default function UGCAdCreator() {
       setError(err instanceof ApiError ? err.detail : "Something went wrong.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleBuyCredit = async (sku: string) => {
+    setBuyingCredit(sku);
+    try {
+      const { checkout_url } = await createCreditCheckout(token, sku);
+      window.location.href = checkout_url;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Couldn't start checkout.");
+      setBuyingCredit(null);
     }
   };
 
@@ -354,9 +369,29 @@ export default function UGCAdCreator() {
           <div className="mt-3 text-sm text-rose-400">
             <p>{error}</p>
             {quotaExceeded && (
-              <Link href="/pricing" className="mt-1 inline-block text-volt-300 underline">
-                See plans →
-              </Link>
+              <div className="mt-3 rounded-lg border border-white/10 bg-ink-950/60 p-3">
+                <p className="font-display text-sm font-bold text-white">{t("credits.outOfVideos")}</p>
+                <p className="mt-1 text-xs text-slate-400">{t("credits.outOfVideosBody")}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleBuyCredit("standard_1")}
+                    disabled={buyingCredit !== null}
+                    className="btn-secondary"
+                  >
+                    {buyingCredit === "standard_1" ? t("credits.buying") : t("credits.buyStandardShort")}
+                  </button>
+                  <button
+                    onClick={() => handleBuyCredit("ugc_1")}
+                    disabled={buyingCredit !== null}
+                    className="btn-primary"
+                  >
+                    {buyingCredit === "ugc_1" ? t("credits.buying") : t("credits.buyUgcShort")}
+                  </button>
+                  <Link href="/pricing" className="btn-secondary">
+                    See plans →
+                  </Link>
+                </div>
+              </div>
             )}
           </div>
         )}

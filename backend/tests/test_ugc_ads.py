@@ -192,3 +192,37 @@ def test_full_ugc_flow_history_and_file_download(client, token, monkeypatch):
     file_response = client.get(f"/api/ugc-ads/{ugc_id}/file", headers={"Authorization": f"Bearer {token}"})
     assert file_response.status_code == 200
     assert file_response.content == b"fake ugc mp4 bytes"
+
+
+def test_create_ugc_ad_uses_purchased_credit_without_touching_general_quota(client, monkeypatch):
+    """Once the plan's UGC sub-quota is exhausted, a purchased UGC credit
+    should cover the render on its own — not also spend a unit of the
+    general video quota, even though that quota still has room left."""
+    from app.db import SessionLocal, User
+
+    monkeypatch.setattr(ugc_ads_router, "generate_ugc_ad", _fake_generate_ugc_ad)
+    free_token = _signup(client, email="purchased-credit@example.com")
+
+    # Free's UGC sub-quota is 1 — exhaust it. This also spends 1 unit of
+    # the general video quota (free's overall cap is 3, so 2 remain).
+    first = client.post(
+        "/api/ugc-ads/create", data=_create_payload(), headers={"Authorization": f"Bearer {free_token}"}
+    )
+    assert first.status_code == 200, first.text
+
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == "purchased-credit@example.com").first()
+    user.purchased_ugc_credits = 1
+    db.add(user)
+    db.commit()
+    db.close()
+
+    second = client.post(
+        "/api/ugc-ads/create", data=_create_payload(), headers={"Authorization": f"Bearer {free_token}"}
+    )
+    assert second.status_code == 200, second.text
+
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {free_token}"})
+    assert me.json()["purchased_ugc_credits"] == 0  # spent
+    assert me.json()["videos_used"] == 1  # unchanged by the purchased-credit render
+    assert me.json()["ugc_videos_used"] == 1  # unchanged — the plan's UGC counter stays at its cap

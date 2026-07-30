@@ -60,6 +60,27 @@ PLAN_PRICE_SEK = {"free": 0, "pro": 199, "max": 499}
 UGC_PLAN_LIMITS = {"free": 1, "pro": 3, "max": 8}
 OWNER_PLAN = "owner"  # the seeded OWNER_EMAIL account — unlimited, not a paid plan
 
+# Pay-as-you-go: one-time purchases, on top of (not instead of) a plan, that
+# add non-expiring credits — lets a Free user try the product without
+# subscribing, and lets a paid user who blows through their monthly
+# allowance keep going instead of hitting a hard wall. Priced in USD
+# directly (unlike the subscription plans, which are actually charged in
+# SEK and only *displayed* in USD — see PricingPage's USD_PRICE comment)
+# since these are real new charges, not a display conversion of an
+# existing price. Priced well above the estimated per-video cost (see the
+# PLAN_LIMITS comment above) so every purchase is independently profitable,
+# regardless of which plan the buyer is on. Volume packs give a discount to
+# reward committing to more up front while keeping subscriptions the best
+# per-video deal for regular users.
+CREDIT_PACKS = {
+    "standard_1": {"kind": "video", "credits": 1, "price_usd_cents": 300, "label": "1 Standard Video"},
+    "standard_5": {"kind": "video", "credits": 5, "price_usd_cents": 1300, "label": "5 Standard Videos"},
+    "standard_10": {"kind": "video", "credits": 10, "price_usd_cents": 2400, "label": "10 Standard Videos"},
+    "ugc_1": {"kind": "ugc", "credits": 1, "price_usd_cents": 600, "label": "1 UGC Video"},
+    "ugc_5": {"kind": "ugc", "credits": 5, "price_usd_cents": 2200, "label": "5 UGC Videos"},
+    "ugc_10": {"kind": "ugc", "credits": 10, "price_usd_cents": 4000, "label": "10 UGC Videos"},
+}
+
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")

@@ -148,6 +148,40 @@ def test_create_video_ad_blocks_free_plan_after_lifetime_limit(client, monkeypat
     assert blocked.status_code == 402
 
 
+def test_create_video_ad_uses_purchased_credit_after_plan_quota_exhausted(client, monkeypatch):
+    from app.db import SessionLocal, User
+
+    monkeypatch.setattr(video_ads_router, "generate_video_ad", _fake_generate_video_ad)
+    free_token = _signup(client, email="purchased-video-credit@example.com")
+    for _ in range(3):  # exhaust free's 3-video lifetime cap
+        r = client.post(
+            "/api/video-ads/create",
+            data={"product_name": "Widget", "duration_seconds": "20"},
+            files=_upload_files(),
+            headers={"Authorization": f"Bearer {free_token}"},
+        )
+        assert r.status_code == 200, r.text
+
+    db = SessionLocal()
+    user = db.query(User).filter(User.email == "purchased-video-credit@example.com").first()
+    user.purchased_video_credits = 1
+    db.add(user)
+    db.commit()
+    db.close()
+
+    covered = client.post(
+        "/api/video-ads/create",
+        data={"product_name": "Widget", "duration_seconds": "20"},
+        files=_upload_files(),
+        headers={"Authorization": f"Bearer {free_token}"},
+    )
+    assert covered.status_code == 200, covered.text
+
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {free_token}"})
+    assert me.json()["videos_used"] == 3  # plan counter stays at its cap
+    assert me.json()["purchased_video_credits"] == 0  # spent instead
+
+
 def test_create_video_ad_accepts_prewritten_script_and_skips_script_generation(client, token, monkeypatch):
     def _write_script_should_not_be_called(*args, **kwargs):
         raise AssertionError("write_video_script should be skipped when a script is provided")

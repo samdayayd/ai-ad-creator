@@ -2,8 +2,16 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ApiError, createBillingPortal, createCheckout, getMe, getPlans } from "@/lib/api";
-import { Me, Plan } from "@/lib/types";
+import {
+  ApiError,
+  createBillingPortal,
+  createCheckout,
+  createCreditCheckout,
+  getCreditPacks,
+  getMe,
+  getPlans,
+} from "@/lib/api";
+import { CreditPack, Me, Plan } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { useLanguage } from "@/lib/LanguageProvider";
 
@@ -30,18 +38,22 @@ function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [creditPacks, setCreditPacks] = useState<CreditPack[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [busySku, setBusySku] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const checkoutStatus = searchParams.get("checkout");
+  const purchaseStatus = searchParams.get("purchase");
   const showSek = locale === "sv";
 
   useEffect(() => {
-    Promise.all([getPlans(), token ? getMe(token) : Promise.resolve(null)])
-      .then(([p, m]) => {
+    Promise.all([getPlans(), getCreditPacks(), token ? getMe(token) : Promise.resolve(null)])
+      .then(([p, c, m]) => {
         setPlans(p);
+        setCreditPacks(c);
         setMe(m);
       })
       .catch(() => setPlans([]))
@@ -62,6 +74,22 @@ function PricingContent() {
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Couldn't start checkout.");
       setBusyPlan(null);
+    }
+  };
+
+  const handleBuyCredit = async (sku: string) => {
+    setError(null);
+    if (!token) {
+      router.push("/signup");
+      return;
+    }
+    setBusySku(sku);
+    try {
+      const { checkout_url } = await createCreditCheckout(token, sku);
+      window.location.href = checkout_url;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Couldn't start checkout.");
+      setBusySku(null);
     }
   };
 
@@ -94,6 +122,14 @@ function PricingContent() {
       )}
       {checkoutStatus === "cancelled" && (
         <p className="panel px-4 py-3 text-sm text-slate-400">{t("pricing.checkoutCancelled")}</p>
+      )}
+      {purchaseStatus === "success" && (
+        <p className="rounded-md border border-emerald-700 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-300">
+          {t("credits.purchaseSuccess")}
+        </p>
+      )}
+      {purchaseStatus === "cancelled" && (
+        <p className="panel px-4 py-3 text-sm text-slate-400">{t("credits.purchaseCancelled")}</p>
       )}
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
@@ -150,6 +186,44 @@ function PricingContent() {
       </div>
 
       {!showSek && <p className="text-xs text-slate-500">{t("pricing.currencyNote")}</p>}
+
+      {creditPacks.length > 0 && (
+        <div className="panel p-6">
+          <h2 className="font-display text-lg font-bold tracking-wide text-white">{t("credits.title")}</h2>
+          <p className="mt-1 text-sm text-slate-400">{t("credits.subtitle")}</p>
+
+          <div className="mt-4 grid gap-6 sm:grid-cols-2">
+            {(["video", "ugc"] as const).map((kind) => (
+              <div key={kind} className="space-y-2">
+                <p className="label-tech">{kind === "video" ? "Standard" : "UGC"}</p>
+                {creditPacks
+                  .filter((pack) => pack.kind === kind)
+                  .map((pack) => (
+                    <div
+                      key={pack.sku}
+                      className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-ink-950/60 px-3 py-2"
+                    >
+                      <div>
+                        <p className="text-sm text-white">{pack.label}</p>
+                        <p className="text-xs text-slate-500">
+                          ${pack.price_usd.toFixed(2)} (${(pack.price_usd / pack.credits).toFixed(2)}
+                          {t("credits.perVideo")})
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleBuyCredit(pack.sku)}
+                        disabled={busySku === pack.sku}
+                        className="btn-secondary shrink-0"
+                      >
+                        {busySku === pack.sku ? t("credits.buying") : t("credits.buy")}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {me && me.plan !== "free" && me.plan !== "owner" && (
         <button onClick={handleManageBilling} disabled={busyPlan === "portal"} className="btn-secondary">

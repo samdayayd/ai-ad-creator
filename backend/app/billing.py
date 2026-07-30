@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.config import (
+    CREDIT_PACKS,
     FRONTEND_URL,
     STRIPE_PRICE_ID_MAX,
     STRIPE_PRICE_ID_PRO,
@@ -57,6 +58,41 @@ def create_checkout_session(user: User, plan: str) -> str:
     return session.url
 
 
+def create_credit_checkout_session(user: User, sku: str) -> str:
+    """One-time (not subscription) purchase of a pay-as-you-go credit pack —
+    see config.CREDIT_PACKS. Priced with inline price_data rather than
+    pre-created Stripe Price IDs like the subscription plans use, since
+    there are six SKUs and they're plain USD amounts with no need for a
+    dashboard-managed Price object. mode="payment" is what distinguishes
+    this from a subscription Checkout Session in the webhook handler
+    below — Stripe fires the same checkout.session.completed event type
+    for both."""
+    _require_stripe()
+    pack = CREDIT_PACKS.get(sku)
+    if not pack:
+        raise HTTPException(status_code=400, detail=f"Unknown credit pack: {sku}")
+
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": f"{pack['label']} — ZeTruth Studio"},
+                    "unit_amount": pack["price_usd_cents"],
+                },
+                "quantity": 1,
+            }
+        ],
+        customer=user.stripe_customer_id or None,
+        customer_email=None if user.stripe_customer_id else user.email,
+        success_url=f"{FRONTEND_URL}/pricing?purchase=success",
+        cancel_url=f"{FRONTEND_URL}/pricing?purchase=cancelled",
+        metadata={"user_id": str(user.id), "sku": sku},
+    )
+    return session.url
+
+
 def create_portal_session(user: User) -> str:
     _require_stripe()
     if not user.stripe_customer_id:
@@ -82,7 +118,12 @@ def handle_webhook_event(payload: bytes, signature: str, session: Session) -> No
     event_type = event["type"]
     data = event["data"]["object"]
     if event_type == "checkout.session.completed":
-        _on_checkout_completed(data, session)
+        # Stripe fires this same event type for both subscription and
+        # one-time Checkout Sessions — "mode" is what tells them apart.
+        if data.get("mode") == "payment":
+            _on_credit_purchase_completed(data, session)
+        else:
+            _on_checkout_completed(data, session)
     elif event_type == "customer.subscription.updated":
         _on_subscription_updated(data, session)
     elif event_type == "customer.subscription.deleted":
@@ -112,6 +153,20 @@ def _on_checkout_completed(data: dict, session: Session) -> None:
     user.plan = plan
     user.videos_used = 0
     user.usage_period_start = datetime.now(timezone.utc)
+    session.add(user)
+    session.commit()
+
+
+def _on_credit_purchase_completed(data: dict, session: Session) -> None:
+    metadata = data.get("metadata") or {}
+    pack = CREDIT_PACKS.get(metadata.get("sku", ""))
+    user = _find_user(session, user_id=metadata.get("user_id"))
+    if not user or not pack:
+        return
+    if pack["kind"] == "ugc":
+        user.purchased_ugc_credits += pack["credits"]
+    else:
+        user.purchased_video_credits += pack["credits"]
     session.add(user)
     session.commit()
 

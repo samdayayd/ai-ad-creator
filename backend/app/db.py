@@ -31,6 +31,12 @@ class User(Base):
     # Stripe webhook's invoice.paid event on each real renewal; quota.py's
     # 30-day fallback only kicks in if a webhook was ever missed.
     usage_period_start = Column(DateTime, nullable=True)
+    # Pay-as-you-go balances — one-time Stripe purchases (see
+    # config.CREDIT_PACKS), never expire, never reset by the monthly
+    # rollover above. Spent only once the matching plan allowance for that
+    # request is exhausted; see quota.py for the exact fallback order.
+    purchased_video_credits = Column(Integer, nullable=False, default=0)
+    purchased_ugc_credits = Column(Integer, nullable=False, default=0)
 
 
 class AdGeneration(Base):
