@@ -17,8 +17,15 @@ def compute_rsi(prices: pd.Series, period: int) -> pd.Series:
     loss = -delta.clip(upper=0)
     avg_gain = gain.rolling(window=period).mean()
     avg_loss = loss.rolling(window=period).mean()
+
     rs = avg_gain / avg_loss.replace(0, np.nan)
     rsi = 100 - (100 / (1 + rs))
+
+    # avg_loss == 0 means no losses anywhere in the window: a strict uptrend
+    # is maximally overbought (RSI 100), not neutral -- only truly flat
+    # prices (avg_gain also 0) should read as neutral (RSI 50).
+    rsi = rsi.where(avg_loss != 0, np.where(avg_gain > 0, 100.0, 50.0))
+
     return rsi.fillna(50)
 
 

@@ -92,7 +92,61 @@ def place_bracket_buy(trading_client, symbol: str, qty: int, entry_hint: float,
     return trading_client.submit_order(order)
 
 
+def reconcile_closed_trades(trading_client, risk_manager):
+    """
+    For every trade we're still tracking as open, check whether its position
+    has actually closed (stop-loss or take-profit leg filled) and, if so,
+    record the realized P&L against the daily cap. Without this, the daily
+    profit/loss halt never sees any P&L and can never trigger.
+    """
+    open_trades = risk_manager.get_open_trades()
+    if not open_trades:
+        return
+
+    from alpaca.trading.requests import GetOrdersRequest
+    from alpaca.trading.enums import QueryOrderStatus, OrderSide
+
+    still_open_symbols = {p.symbol for p in trading_client.get_all_positions()}
+
+    for symbol, trade in open_trades.items():
+        if symbol in still_open_symbols:
+            continue  # position hasn't closed yet, nothing to reconcile
+
+        req = GetOrdersRequest(
+            status=QueryOrderStatus.CLOSED,
+            symbols=[symbol],
+            side=OrderSide.SELL,
+            limit=10,
+            direction="desc",
+        )
+        try:
+            closed_orders = trading_client.get_orders(req)
+        except Exception as e:
+            logger.error(f"[{symbol}] Failed to fetch closed orders for P&L reconciliation: {e}")
+            continue
+
+        exit_order = next((o for o in closed_orders if o.filled_avg_price is not None), None)
+        if exit_order is None:
+            logger.warning(
+                f"[{symbol}] Position closed but no filled exit order found; "
+                f"cannot record realized P&L for this trade."
+            )
+            risk_manager.forget_open_trade(symbol)
+            continue
+
+        exit_price = float(exit_order.filled_avg_price)
+        pnl = (exit_price - trade["entry_price"]) * trade["qty"]
+        logger.info(
+            f"[{symbol}] Position closed: entry={trade['entry_price']} exit={exit_price} "
+            f"qty={trade['qty']} realized_pnl=${pnl:.2f}"
+        )
+        risk_manager.record_closed_trade_pnl(pnl)
+        risk_manager.forget_open_trade(symbol)
+
+
 def run_cycle(trading_client, data_client, news_checker, risk_manager):
+    reconcile_closed_trades(trading_client, risk_manager)
+
     allowed, reason = risk_manager.trading_allowed_today()
     if not allowed:
         logger.info(f"Trading halted for today: {reason}")
@@ -103,12 +157,17 @@ def run_cycle(trading_client, data_client, news_checker, risk_manager):
 
     open_positions = trading_client.get_all_positions()
     open_symbols = {p.symbol for p in open_positions}
+    available_slots = config.MAX_OPEN_POSITIONS - len(open_positions)
 
-    if len(open_positions) >= config.MAX_OPEN_POSITIONS:
+    if available_slots <= 0:
         logger.info(f"Max open positions ({config.MAX_OPEN_POSITIONS}) reached, skipping new entries.")
         return
 
     for symbol in config.SYMBOLS:
+        if available_slots <= 0:
+            logger.info(f"Max open positions ({config.MAX_OPEN_POSITIONS}) reached mid-cycle, stopping new entries.")
+            break
+
         if symbol in open_symbols:
             logger.info(f"[{symbol}] Already have an open position, skipping.")
             continue
@@ -140,6 +199,8 @@ def run_cycle(trading_client, data_client, news_checker, risk_manager):
 
         try:
             order = place_bracket_buy(trading_client, symbol, qty, entry_price, stop_loss, take_profit)
+            risk_manager.record_open_trade(symbol, order.id, qty, entry_price)
+            available_slots -= 1
             logger.info(
                 f"[{symbol}] BUY submitted: qty={qty} entry~{entry_price} "
                 f"stop_loss={stop_loss} take_profit={take_profit} order_id={order.id}"
